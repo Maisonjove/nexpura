@@ -127,7 +127,13 @@ export async function completeOnboarding(
       if (stripePaidTenant?.id) {
         // Link the user to the existing Stripe-paid tenant + update its
         // business name/type from this onboarding submission.
-        await adminClient.from("users").upsert(
+        // Policy: destructive THROW (ghost-tenant prevention). If this
+        // upsert fails, the user has paid Stripe (tenant has
+        // stripe_customer_id) but public.users.tenant_id stays NULL —
+        // they sign in and hit "no tenant" / get bounced back to
+        // onboarding, while their workspace exists in the DB orphaned.
+        // Outer try/catch unwinds with a generic error so they retry.
+        const { error: linkUserErr } = await adminClient.from("users").upsert(
           {
             id: user.id,
             tenant_id: stripePaidTenant.id,
@@ -137,10 +143,23 @@ export async function completeOnboarding(
           },
           { onConflict: "id" },
         );
-        await adminClient
+        if (linkUserErr) {
+          throw new Error(`onboarding: users upsert (link to Stripe-paid tenant) failed: ${linkUserErr.message}`);
+        }
+        // Policy: destructive THROW (ghost-tenant prevention). The user
+        // is now linked to the tenant, but if this update fails the
+        // tenant still has whatever placeholder name the webhook wrote
+        // ("Owner" / no business_type) instead of what the user just
+        // typed in onboarding — workspace is mis-branded across UI,
+        // emails, receipts. Throw so the outer try/catch fails the
+        // request and the user retries onboarding with the same form.
+        const { error: tenantNameErr } = await adminClient
           .from("tenants")
           .update({ name: sanitizedName, business_type: sanitizedType })
           .eq("id", stripePaidTenant.id);
+        if (tenantNameErr) {
+          throw new Error(`onboarding: tenants update (name/business_type on Stripe-paid tenant) failed: ${tenantNameErr.message}`);
+        }
         await invalidateUserCache(user.id);
         return { slug: stripePaidTenant.slug ?? "" };
       }
@@ -192,7 +211,22 @@ export async function completeOnboarding(
 
     if (userErr) {
       logger.error("User creation error:", userErr);
-      await adminClient.from("tenants").delete().eq("id", tenant.id);
+      // Policy: destructive THROW (ghost-tenant prevention). User
+      // upsert just failed — we have a tenant row but no user→tenant
+      // link. Roll back the tenant insert so the user can retry
+      // cleanly. If THIS rollback delete itself fails, we've leaked an
+      // orphan tenant (no user, no Stripe customer because this is the
+      // pre-Stripe path) into the DB; throw so the failure surfaces in
+      // Sentry and the outer try/catch returns a clean error to the
+      // user. Better an error here than a silent orphan tenant that
+      // pollutes admin metrics and slug uniqueness.
+      const { error: tenantRollbackErr } = await adminClient
+        .from("tenants")
+        .delete()
+        .eq("id", tenant.id);
+      if (tenantRollbackErr) {
+        throw new Error(`onboarding: tenants rollback delete (after users upsert failure) failed: ${tenantRollbackErr.message}; original users error: ${userErr.message}`);
+      }
       await flushSentry();
       return { error: userErr.message };
     }
@@ -212,8 +246,29 @@ export async function completeOnboarding(
 
     if (subErr) {
       logger.error("Subscription creation error:", subErr);
-      await adminClient.from("users").delete().eq("id", user.id);
-      await adminClient.from("tenants").delete().eq("id", tenant.id);
+      // Policy: destructive THROW (ghost-tenant prevention). Subscription
+      // insert just failed — we have tenant + user→tenant link but no
+      // subscription row, which means the user can sign in but every
+      // billing/plan check returns null and behaviour is undefined
+      // (locked-out UI / phantom-trial bugs). Roll back both rows so
+      // they can retry cleanly; if either rollback fails we'd leave an
+      // orphan tenant or an orphan user→tenant link with no
+      // subscription, so throw and let the outer catch surface a
+      // generic error — preferable to a half-state account.
+      const { error: userRollbackErr } = await adminClient
+        .from("users")
+        .delete()
+        .eq("id", user.id);
+      if (userRollbackErr) {
+        throw new Error(`onboarding: users rollback delete (after subscriptions insert failure) failed: ${userRollbackErr.message}; original subscriptions error: ${subErr.message}`);
+      }
+      const { error: tenantRollback2Err } = await adminClient
+        .from("tenants")
+        .delete()
+        .eq("id", tenant.id);
+      if (tenantRollback2Err) {
+        throw new Error(`onboarding: tenants rollback delete (after subscriptions insert failure) failed: ${tenantRollback2Err.message}; original subscriptions error: ${subErr.message}`);
+      }
       await flushSentry();
       return { error: "Failed to create subscription" };
     }

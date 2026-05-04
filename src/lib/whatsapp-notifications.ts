@@ -36,7 +36,11 @@ export async function sendWhatsAppMessage(
   // outcomes; this aligns sendWhatsAppMessage with the same pattern.
   const admin = createAdminClient();
   try {
-    await admin.from("whatsapp_sends").insert({
+    // Side-effect log+continue: Twilio has already accepted (or rejected)
+    // the message above — this row is the audit trail of that attempt.
+    // A failed insert means we lose visibility for one send; we still
+    // return the actual delivery result to the caller unchanged.
+    const { error: logErr } = await admin.from("whatsapp_sends").insert({
       tenant_id: tenantId,
       phone: params.to,
       message: params.message,
@@ -45,6 +49,11 @@ export async function sendWhatsAppMessage(
       twilio_sid: result.messageId,
       error_message: result.error,
     });
+    if (logErr) {
+      logger.error("[whatsapp-notifications] whatsapp_sends insert failed (non-fatal — Twilio attempt already returned to caller)", {
+        tenantId, to: params.to, twilioSuccess: result.success, err: logErr,
+      });
+    }
   } catch (err) {
     logger.warn("[whatsapp-notifications] Failed to log send:", err);
   }
@@ -138,9 +147,14 @@ export async function notifyCustomerJobReady(
     message,
   });
 
-  // Log the notification
+  // Log the notification.
+  // Side-effect log+continue: the WhatsApp send via sendWhatsAppMessage
+  // above has already happened (and that helper logs its own row too).
+  // This upsert is a job-ready-specific audit record with customer_id;
+  // losing it on insert failure means we can't reconcile "did this job's
+  // ready-notification get sent?" but the customer was still notified.
   const admin = createAdminClient();
-  await admin.from("whatsapp_sends").upsert({
+  const { error: logErr } = await admin.from("whatsapp_sends").upsert({
     tenant_id: tenantId,
     customer_id: customer.id,
     phone: customer.phone,
@@ -150,6 +164,11 @@ export async function notifyCustomerJobReady(
     twilio_sid: result.messageId,
     error_message: result.error,
   });
+  if (logErr) {
+    logger.error("[notifyCustomerJobReady] whatsapp_sends upsert failed (non-fatal — customer notification already sent)", {
+      tenantId, customerId: customer.id, jobId: job.id, jobType: job.type, err: logErr,
+    });
+  }
 
   return { sent: result.success, error: result.error };
 }
@@ -203,7 +222,13 @@ export async function notifyTaskAssignment(
 
   const admin = createAdminClient();
   try {
-    await admin.from("whatsapp_sends").insert({
+    // Side-effect log+continue: Twilio has already attempted the
+    // task-assignment WhatsApp send above. Failing the audit insert
+    // means we can't later reconcile "which assignments got notified?",
+    // but the employee was still pinged (or already saw the failure
+    // bubble up via result.error). The function still returns the real
+    // delivery result.
+    const { error: logErr } = await admin.from("whatsapp_sends").insert({
       tenant_id: tenantId,
       phone: member.phone_number,
       message,
@@ -212,6 +237,11 @@ export async function notifyTaskAssignment(
       twilio_sid: result.messageId,
       error_message: result.error,
     });
+    if (logErr) {
+      logger.error("[notifyTaskAssignment] whatsapp_sends insert failed (non-fatal — Twilio attempt already returned to caller)", {
+        tenantId, assigneeId, taskType: task.type, twilioSuccess: result.success, err: logErr,
+      });
+    }
   } catch (err) {
     logger.warn("[notifyTaskAssignment] Failed to log send:", err);
   }
@@ -263,7 +293,11 @@ export async function notifyStatusChange(
 
   // Log the send
   try {
-    await admin.from("sms_sends").insert({
+    // Side-effect log+continue: SMS already dispatched via Twilio above.
+    // Losing the sms_sends row drops one entry from the per-tenant
+    // delivery audit (used for billing reconciliation + ops visibility),
+    // but the employee already received the status-change notification.
+    const { error: logErr } = await admin.from("sms_sends").insert({
       tenant_id: tenantId,
       phone: member.phone_number,
       message,
@@ -272,6 +306,11 @@ export async function notifyStatusChange(
       error_message: result.error,
       context: { type: "status_change", assignee_id: assigneeId },
     });
+    if (logErr) {
+      logger.error("[notifyStatusChange] sms_sends insert failed (non-fatal — SMS already dispatched)", {
+        tenantId, assigneeId, twilioSuccess: result.success, err: logErr,
+      });
+    }
   } catch (err) {
     logger.warn("[notifyStatusChange] Failed to log send:", err);
   }
@@ -328,7 +367,12 @@ export async function notifyUrgentFlagged(
 
   // Log the send
   try {
-    await admin.from("sms_sends").insert({
+    // Side-effect log+continue: urgent SMS already dispatched via
+    // Twilio above. The audit row is for billing reconciliation +
+    // urgent-flag-notification audit; losing it doesn't undo the SMS,
+    // and the function still returns the actual delivery result so the
+    // caller (urgent-flag handler) can react.
+    const { error: logErr } = await admin.from("sms_sends").insert({
       tenant_id: tenantId,
       phone: member.phone_number,
       message,
@@ -337,6 +381,11 @@ export async function notifyUrgentFlagged(
       error_message: result.error,
       context: { type: "urgent_flagged", assignee_id: assigneeId },
     });
+    if (logErr) {
+      logger.error("[notifyUrgentFlagged] sms_sends insert failed (non-fatal — urgent SMS already dispatched)", {
+        tenantId, assigneeId, twilioSuccess: result.success, err: logErr,
+      });
+    }
   } catch (err) {
     logger.warn("[notifyUrgentFlagged] Failed to log send:", err);
   }

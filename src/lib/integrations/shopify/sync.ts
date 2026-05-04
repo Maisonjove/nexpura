@@ -8,6 +8,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getIntegration, upsertIntegration } from "@/lib/integrations";
+import logger from "@/lib/logger";
 
 interface ShopifyConfig {
   shop_domain: string;
@@ -247,21 +248,38 @@ export async function exportInventoryToShopify(tenantId: string): Promise<SyncRe
           }),
         });
 
-        // Save Shopify IDs back to inventory
+        // Save Shopify IDs back to inventory. Cron-runner log+continue:
+        // a failed Shopify-IDs writeback means the next sync run treats
+        // this item as "not linked yet" and tries to create another
+        // Shopify product (duplicate). Worth surfacing via Sentry but
+        // not aborting the whole export — the rest of the items still
+        // benefit from the sync run.
         const variant = result.product?.variants?.[0];
         if (variant) {
-          await admin.from("inventory").update({
+          const { error: linkErr } = await admin.from("inventory").update({
             shopify_product_id: String(result.product.id),
             shopify_variant_id: String(variant.id),
             last_synced_at: new Date().toISOString(),
           }).eq("id", item.id);
+          if (linkErr) {
+            logger.error("[shopify-sync] inventory shopify-IDs writeback failed (non-fatal — next run may create duplicate Shopify product)", {
+              tenantId, inventoryId: item.id, shopifyProductId: result.product.id, err: linkErr,
+            });
+          }
         }
 
         exported++;
       }
 
-      // Update last_synced_at
-      await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+      // Update last_synced_at. Cron-runner log+continue: stale
+      // last_synced_at on one row is observability-only — the actual
+      // sync to Shopify above already succeeded. Loop continues.
+      const { error: tsErr } = await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+      if (tsErr) {
+        logger.error("[shopify-sync] inventory last_synced_at update failed (non-fatal — Shopify sync above succeeded)", {
+          tenantId, inventoryId: item.id, err: tsErr,
+        });
+      }
     } catch (err) {
       errors.push(`Item ${item.id}: ${err instanceof Error ? err.message : "Error"}`);
       skipped++;
@@ -331,8 +349,15 @@ export async function syncSingleItemToShopify(
       }),
     });
 
-    // Update last_synced_at
-    await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+    // Update last_synced_at. Cron-runner log+continue: stale timestamp
+    // is observability-only — Shopify side has already been updated
+    // above, so the function still returns success.
+    const { error: tsErr } = await admin.from("inventory").update({ last_synced_at: new Date().toISOString() }).eq("id", item.id);
+    if (tsErr) {
+      logger.error("[shopify-sync/single] inventory last_synced_at update failed (non-fatal — Shopify side already synced)", {
+        tenantId, inventoryId: item.id, err: tsErr,
+      });
+    }
 
     return { success: true };
   } catch (err) {
@@ -543,7 +568,15 @@ export async function importOrdersFromShopify(tenantId: string): Promise<SyncRes
             .eq("sku", li.sku)
             .single();
 
-          await admin.from("sale_items").insert({
+          // Cron-runner log+continue. Note: this CAN leave a sale row
+          // without a complete set of sale_items if a single insert
+          // fails. The next sync run skips already-imported sales (via
+          // the external_reference check above), so a partial import
+          // won't self-heal. Real concern but out of scope for this PR;
+          // tracked as post-Phase-2 cleanup item — Shopify-import
+          // partial-state recovery (e.g. delete the sale + redo, or
+          // backfill missing items on next run).
+          const { error: liErr } = await admin.from("sale_items").insert({
             tenant_id: tenantId,
             sale_id: sale!.id,
             inventory_id: inventoryItem?.id || null,
@@ -551,6 +584,12 @@ export async function importOrdersFromShopify(tenantId: string): Promise<SyncRes
             unit_price: parseFloat(li.price),
             total: li.quantity * parseFloat(li.price),
           });
+          if (liErr) {
+            logger.error("[shopify-sync/orders] sale_items insert failed (non-fatal — see partial-state caveat in code)", {
+              tenantId, saleId: sale!.id, shopifyOrderId: order.id, lineItemId: li.id, err: liErr,
+            });
+            errors.push(`Order ${order.id} line ${li.id}: ${liErr.message}`);
+          }
         }
 
         imported++;
@@ -580,15 +619,28 @@ async function logSync(
   errors: string[]
 ) {
   const admin = createAdminClient();
-  await admin.from("integrations").update({
+  // Cron-runner log+continue: this whole helper is observability —
+  // bumping last_sync_at + writing the activity_log row. Either failing
+  // is a missed signal but neither breaks the import/export above.
+  const { error: intErr } = await admin.from("integrations").update({
     last_sync_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }).eq("tenant_id", tenantId).eq("type", "shopify");
+  if (intErr) {
+    logger.error("[shopify-sync] integrations last_sync_at update failed (non-fatal)", {
+      tenantId, syncType, err: intErr,
+    });
+  }
 
-  // Log to activity_log if the column exists
-  await admin.from("activity_log").insert({
+  // Log to activity_log. Same log+continue policy.
+  const { error: actErr } = await admin.from("activity_log").insert({
     tenant_id: tenantId,
     action: syncType,
     details: { synced, skipped, errors: errors.slice(0, 5) },
   });
+  if (actErr) {
+    logger.error("[shopify-sync] activity_log insert failed (non-fatal)", {
+      tenantId, syncType, err: actErr,
+    });
+  }
 }

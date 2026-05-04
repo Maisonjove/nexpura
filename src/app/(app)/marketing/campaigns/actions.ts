@@ -281,11 +281,16 @@ export async function sendCampaignNow(id: string) {
     return { error: "Campaign already sent" };
   }
 
-  // Update status to sending
-  await admin
+  // Update status to sending.
+  // Destructive return-error: this is the "claim the campaign for
+  // sending" gate — without it, a parallel sendCampaignNow call could
+  // double-blast the recipient list (real money + reputational risk).
+  // Surface failure to the UI before any email is dispatched.
+  const { error: claimErr } = await admin
     .from("email_campaigns")
     .update({ status: "sending" })
     .eq("id", id);
+  if (claimErr) return { error: claimErr.message };
 
   try {
     // Get recipients
@@ -296,10 +301,15 @@ export async function sendCampaignNow(id: string) {
     );
 
     if (recipients.length === 0) {
-      await admin
+      // Destructive return-error: revert the "sending" claim so the
+      // user can re-edit the campaign. If this revert fails, the
+      // campaign is stuck in "sending" with no actual send running —
+      // surface that to the UI rather than swallowing.
+      const { error: revertErr } = await admin
         .from("email_campaigns")
         .update({ status: "draft" })
         .eq("id", id);
+      if (revertErr) return { error: revertErr.message };
       return { error: "No recipients found for this campaign" };
     }
 
@@ -325,8 +335,14 @@ export async function sendCampaignNow(id: string) {
       campaignId: id,
     });
 
-    // Update campaign stats and status
-    await admin
+    // Update campaign stats and status.
+    // Destructive return-error: the bulk email already went out above —
+    // this update is the system-of-record marker that the campaign was
+    // sent (drives "Sent" tab, prevents accidental re-sends, holds the
+    // delivery stats). If this fails, the campaign sits in "sending"
+    // and the user might re-trigger it; surface the failure rather
+    // than silently leaving the row inconsistent.
+    const { error: finalizeErr } = await admin
       .from("email_campaigns")
       .update({
         status: "sent",
@@ -339,6 +355,7 @@ export async function sendCampaignNow(id: string) {
         },
       })
       .eq("id", id);
+    if (finalizeErr) return { error: finalizeErr.message };
 
     await logAuditEvent({
       tenantId,
@@ -363,11 +380,21 @@ export async function sendCampaignNow(id: string) {
       failed: result.failed,
     };
   } catch (err) {
-    await admin
+    // Destructive return-error: catch-block revert from "sending" back
+    // to "draft" so the user can retry. If this revert itself fails,
+    // the campaign is stuck in "sending" — we surface the underlying
+    // send error preferentially (caller cares more about why it failed
+    // than about the revert), but log the revert failure so ops can
+    // unstick the row manually if needed.
+    const { error: revertErr } = await admin
       .from("email_campaigns")
       .update({ status: "draft" })
       .eq("id", id);
-    return { error: err instanceof Error ? err.message : "Failed to send campaign" };
+    const sendErrMsg = err instanceof Error ? err.message : "Failed to send campaign";
+    if (revertErr) {
+      return { error: `${sendErrMsg} (additionally, status revert failed: ${revertErr.message} — campaign may be stuck in 'sending')` };
+    }
+    return { error: sendErrMsg };
   }
 }
 

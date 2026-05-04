@@ -324,17 +324,32 @@ export const POST = withSentryFlush(async (req: Request) => {
         // Save this exchange
         let convoId = conversationId;
         if (!convoId) {
-          const { data: newConvo } = await adminClient
+          // Destructive throw — `ai_conversations` is the user-facing
+          // conversation history. If this insert fails the user expects
+          // their just-completed export request to appear in history; a
+          // missing convo row means they'll re-ask later. Throw so the
+          // outer try-catch returns 500 and the user retries fresh.
+          const { data: newConvo, error: convoErr } = await adminClient
             .from("ai_conversations")
             .insert({ tenant_id: tenantId, user_id: user.id, title: message.slice(0, 80) })
             .select("id").single();
+          if (convoErr) {
+            throw new Error(`ai_conversations insert failed: ${convoErr.message}`);
+          }
           convoId = newConvo?.id;
         }
         if (convoId) {
-          await adminClient.from("ai_messages").insert([
+          // Side-effect — `ai_messages` rows are the per-turn log of the
+          // conversation. The export already ran and the user got the
+          // success Response.json below; a missing message row leaves a
+          // stale conversation history but doesn't break the user flow.
+          const { error: msgsErr } = await adminClient.from("ai_messages").insert([
             { conversation_id: convoId, tenant_id: tenantId, role: "user", content: message },
             { conversation_id: convoId, tenant_id: tenantId, role: "assistant", content: exportResult },
           ]);
+          if (msgsErr) {
+            logger.error("[ai/chat] ai_messages insert (email-export branch) failed (non-fatal)", { convoId, err: msgsErr });
+          }
         }
         return Response.json({ text: exportResult, conversationId: convoId });
       }
@@ -455,10 +470,16 @@ Be concise, direct, and practical. You know jewellery.`;
       convoId = newConvo.id;
     }
 
-    // Save user message
-    await adminClient.from("ai_messages").insert({
+    // Save user message — side-effect. `ai_messages` is the per-turn log;
+    // even if this insert fails the streamText below still runs, the
+    // assistant reply still streams back to the user, and only the
+    // history view shows a gap. Non-fatal.
+    const { error: userMsgErr } = await adminClient.from("ai_messages").insert({
       conversation_id: convoId, tenant_id: tenantId, role: "user", content: message,
     });
+    if (userMsgErr) {
+      logger.error("[ai/chat] ai_messages user-message insert failed (non-fatal)", { convoId, err: userMsgErr });
+    }
 
     // Fetch history
     // CRIT-5: always scope by tenant_id — even though convoId was verified
@@ -481,17 +502,34 @@ Be concise, direct, and practical. You know jewellery.`;
       system: systemPrompt,
       messages,
       onFinish: async ({ text, usage }) => {
-        await adminClient.from("ai_messages").insert({
+        // Side-effect — `ai_messages` assistant-row log. We're in the
+        // streamText onFinish callback; the assistant reply already
+        // streamed back to the user. A missing log row leaves a gap in
+        // history but the user already saw the answer. Throwing here
+        // wouldn't surface to the user (we're past the response return).
+        const { error: asstMsgErr } = await adminClient.from("ai_messages").insert({
           conversation_id: convoId,
           tenant_id: tenantId,
           role: "assistant",
           content: text,
           tokens_used: (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0),
         });
-        await adminClient.from("ai_conversations")
+        if (asstMsgErr) {
+          logger.error("[ai/chat] ai_messages assistant-message insert failed (non-fatal)", { convoId, err: asstMsgErr });
+        }
+        // Side-effect — `ai_conversations.updated_at` is a sort-order
+        // touch only (drives "Recent" ordering in conversation list).
+        // Downgraded from the file's default destructive policy because
+        // (a) it's a sort timestamp not state-of-record, and (b) we're
+        // in onFinish after the response already streamed — a throw
+        // here can't reach the user. Log + continue.
+        const { error: convoTouchErr } = await adminClient.from("ai_conversations")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", convoId!)
           .eq("tenant_id", tenantId);
+        if (convoTouchErr) {
+          logger.error("[ai/chat] ai_conversations updated_at touch failed (non-fatal)", { convoId, err: convoTouchErr });
+        }
       },
     });
 

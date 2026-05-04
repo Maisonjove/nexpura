@@ -203,11 +203,22 @@ export async function processRefund(params: {
         .eq("tenant_id", tenantId)
         .single();
       finalBalance = (customerRetry?.store_credit || 0) + total;
-      await admin
+      // Policy: destructive return-error. Refund row is already in DB
+      // ("completed") and has been money-out from the books — if this
+      // retry update fails, the customer's store_credit is short by
+      // `total`. Surface to UI so staff can manually reconcile rather
+      // than swallow and leave a silent shortfall the customer
+      // discovers on their next purchase.
+      const { error: retryCreditErr } = await admin
         .from("customers")
         .update({ store_credit: finalBalance })
         .eq("id", sale.customer_id)
         .eq("tenant_id", tenantId);
+      if (retryCreditErr) {
+        return {
+          error: `Refund recorded but store credit update failed: ${retryCreditErr.message}. Refund ID ${refund.id} — please reconcile customer balance manually.`,
+        };
+      }
     }
 
     // Record credit history. The table only exposes
@@ -257,11 +268,26 @@ export async function processRefund(params: {
       refundId: refund.id,
       error: refundItemsErr,
     });
-    await admin
+    // Policy: destructive return-error. This is the saga rollback path
+    // for refund_items insert failure. If the rollback delete itself
+    // fails, we have a "completed" refund row with NO line items — a
+    // money-out record that's invisible to the line-item ledger and
+    // double-bookable on retry. Surface to UI so staff escalate instead
+    // of letting the user retry and create a second refund.
+    const { error: rollbackErr } = await admin
       .from("refunds")
       .delete()
       .eq("id", refund.id)
       .eq("tenant_id", tenantId);
+    if (rollbackErr) {
+      logger.error("[processRefund] refund rollback delete failed — orphan refund row", {
+        refundId: refund.id,
+        error: rollbackErr,
+      });
+      return {
+        error: `Refund items failed AND rollback failed (refund ${refund.id} orphaned in DB). Contact support — do not retry.`,
+      };
+    }
     return { error: "Failed to record refund items — refund rolled back. Please retry." };
   }
 
@@ -273,7 +299,12 @@ export async function processRefund(params: {
   // and quantity_after. Plus the prior CAS was buggy (count: undefined
   // without count: "exact") so it never noticed concurrent races anyway.
   for (const item of params.items.filter((i) => i.restock && i.inventory_id)) {
-    await admin.from("stock_movements").insert({
+    // Policy: destructive return-error. Restock failure means the
+    // refund completed (customer got money/credit back) but inventory
+    // wasn't returned — physical stock is back on the shelf yet the
+    // ledger says it sold. Subsequent sales will oversell. Surface to
+    // UI so staff knows to manually adjust inventory; don't swallow.
+    const { error: stockErr } = await admin.from("stock_movements").insert({
       tenant_id: tenantId,
       inventory_id: item.inventory_id!,
       movement_type: "return",
@@ -281,6 +312,11 @@ export async function processRefund(params: {
       notes: `Refund ${refundNumber}`,
       created_by: userId,
     });
+    if (stockErr) {
+      return {
+        error: `Refund ${refundNumber} processed but inventory restock failed for one or more items: ${stockErr.message}. Adjust stock manually.`,
+      };
+    }
   }
 
       // Only flip the parent sale to status='refunded' when the refund
@@ -290,11 +326,21 @@ export async function processRefund(params: {
       // refunds against the remaining items.
       const fullyRefunded = requestedSubtotal + alreadyRefunded >= saleSubtotal - 0.01;
       if (fullyRefunded) {
-        await admin
+        // Policy: destructive return-error. If this update fails, the
+        // sale stays at its prior status (e.g. 'paid') even though it
+        // is fully refunded — the UI's refunds list/badges go out of
+        // sync with the money ledger and a staff member could attempt
+        // another refund against an already-fully-refunded sale.
+        const { error: saleStatusErr } = await admin
           .from("sales")
           .update({ status: "refunded" })
           .eq("id", params.originalSaleId)
           .eq("tenant_id", tenantId);
+        if (saleStatusErr) {
+          return {
+            error: `Refund ${refundNumber} processed but parent sale status update failed: ${saleStatusErr.message}. Update sale ${params.originalSaleId} status manually.`,
+          };
+        }
       }
 
       // Log audit event
@@ -388,7 +434,13 @@ export async function voidRefund(refundId: string): Promise<{ success?: boolean;
   // Reverse stock_movements for any restocked items
   for (const it of items ?? []) {
     if (it.inventory_id && it.restock && it.quantity) {
-      await admin.from("stock_movements").insert({
+      // Policy: destructive return-error. Void is a financial-reversal
+      // path — if the compensating stock movement fails, the inventory
+      // stays falsely-high (the original refund's restock added stock,
+      // and we'd never deduct it back). Customer would have already
+      // taken the goods back when the original refund was processed,
+      // so phantom inventory leads to oversells. Surface to UI.
+      const { error: stockReverseErr } = await admin.from("stock_movements").insert({
         tenant_id: tenantId,
         inventory_id: it.inventory_id,
         movement_type: "adjustment",
@@ -396,6 +448,11 @@ export async function voidRefund(refundId: string): Promise<{ success?: boolean;
         notes: `Refund ${refund.refund_number} voided`,
         created_by: userId,
       });
+      if (stockReverseErr) {
+        return {
+          error: `Void of refund ${refund.refund_number} aborted — could not reverse inventory: ${stockReverseErr.message}. Refund still active.`,
+        };
+      }
     }
   }
 
@@ -409,11 +466,22 @@ export async function voidRefund(refundId: string): Promise<{ success?: boolean;
       .single();
     if (cust) {
       const newCredit = Math.max(0, Number(cust.store_credit ?? 0) - Number(refund.total));
-      await admin
+      // Policy: destructive return-error. If this update fails, the
+      // refund stays unvoided AND the customer keeps the store credit
+      // they were originally issued — they could spend credit on a
+      // refund we're trying to reverse. Surface to UI; do not flip
+      // refund.status to 'voided' below if balance reversal didn't
+      // succeed (return short-circuits the rest of voidRefund).
+      const { error: creditReverseErr } = await admin
         .from("customers")
         .update({ store_credit: newCredit })
         .eq("id", refund.customer_id)
         .eq("tenant_id", tenantId);
+      if (creditReverseErr) {
+        return {
+          error: `Void of refund ${refund.refund_number} aborted — could not reverse store credit: ${creditReverseErr.message}.`,
+        };
+      }
     }
   }
 
@@ -436,11 +504,22 @@ export async function voidRefund(refundId: string): Promise<{ success?: boolean;
       const restoreStatus = parentSale && Number(parentSale.amount_paid ?? 0) >= Number(parentSale.total ?? 0) - 0.01
         ? "paid"
         : "completed";
-      await admin
+      // Policy: destructive return-error. If this update fails, the
+      // parent sale stays stamped 'refunded' even though we're voiding
+      // the only active refund — the sale stays hidden from staff
+      // listings and unable to receive new partial refunds. Surface to
+      // UI so staff can manually flip the sale back rather than have a
+      // silently-stuck record.
+      const { error: parentRestoreErr } = await admin
         .from("sales")
         .update({ status: restoreStatus })
         .eq("id", refund.original_sale_id)
         .eq("tenant_id", tenantId);
+      if (parentRestoreErr) {
+        return {
+          error: `Void of refund ${refund.refund_number} aborted — parent sale status update failed: ${parentRestoreErr.message}.`,
+        };
+      }
     }
   }
 
