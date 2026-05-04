@@ -41,27 +41,34 @@ fi
 log "diff vs $PREV_SHA:"
 echo "$CHANGED" | sed 's/^/  /' >&2
 
-# A path is "server-only" if it CANNOT affect the rendered UI:
-#   - src/lib/**                 — server helpers (no React)
-#   - src/app/api/**             — API routes
-#   - supabase/**                — DB + edge function defs
-#   - scripts/**                 — meta scripts (incl. this file)
-#   - e2e/**                     — Playwright tests, run separately
-#   - *.md / .gitignore / etc.   — docs + meta
+# Skip-allowlist — files that CANNOT affect the deployed runtime.
 #
-# Anything outside this allowlist must trigger a build, including:
-#   - src/app/(app|marketing|auth)/**, src/components/**, public/**
-#   - package.json, pnpm-lock.yaml, next.config.*, tsconfig.json, vercel.json
-#   - tailwind.config.*, postcss.config.*, src/middleware.ts, src/styles/**
-SERVER_ONLY_PATTERN='^(src/lib/|src/app/api/|supabase/|scripts/|e2e/|docs/|\.github/|[^/]*\.md$|\.gitignore$|\.gitattributes$|CHANGELOG[^/]*$|README[^/]*$)'
+# Joey 2026-05-04 (PR-#127 follow-up): pre-fix this allowlist also
+# included `src/lib/`, `src/app/api/`, `supabase/` (all of it),
+# and `scripts/`, which is wrong: those are baked into Vercel's
+# serverless functions or into the build pipeline. A code change
+# under any of them needs a redeploy for the new logic to be live.
+#
+# Concrete failure: the ad115d8 fix bumping num_stores' Zod cap
+# under /api/contact got categorised as "server-only — skipping"
+# and the broken validation kept running on preview, leaving Joey
+# unable to verify the fix. Then we'd skipped middleware changes
+# previously (G15 admin-allowlist) and edge-function changes too.
+#
+# New rule: skip ONLY for files with no runtime or build effect:
+#   - supabase/migrations/** (run out-of-band against the DB)
+#   - e2e/** (Playwright tests, run separately)
+#   - docs/** + .github/** (no code on the lambda or build)
+#   - markdown / git-meta files
+#
+# Anything else triggers a build. ALWAYS_BUILD_PATTERN is now
+# redundant — middleware, lib, api, scripts, etc. all fall outside
+# the new (much shorter) skip list — but kept as a belt-and-suspenders
+# explicit list for the most foot-gun-prone files in case the
+# allowlist regresses.
+SERVER_ONLY_PATTERN='^(supabase/migrations/|e2e/|docs/|\.github/|[^/]*\.md$|\.gitignore$|\.gitattributes$|CHANGELOG[^/]*$|README[^/]*$)'
 
-# Even within "src/lib/" there's a small denylist of files that DO affect
-# rendered routing/UI and must always trigger a rebuild. Joey 2026-05-03:
-# the allowlist initially routed src/lib/supabase/middleware.ts → skip,
-# which masked a routing change (admin-allowlist branch in the post-
-# audit dogfood-consolidation PR). Add new paths here when you find a
-# similar foot-gun.
-ALWAYS_BUILD_PATTERN='^(src/lib/supabase/middleware\.ts$|src/middleware\.ts$|src/lib/auth/entitlements\.ts$)'
+ALWAYS_BUILD_PATTERN='^(src/lib/supabase/middleware\.ts$|src/middleware\.ts$|src/lib/auth/entitlements\.ts$|src/app/api/|scripts/should-build\.sh$)'
 
 NON_SERVER_ONLY=$(echo "$CHANGED" | grep -Ev "$SERVER_ONLY_PATTERN" || true)
 ALWAYS_BUILD_HITS=$(echo "$CHANGED" | grep -E "$ALWAYS_BUILD_PATTERN" || true)
