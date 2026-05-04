@@ -1,6 +1,12 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  PlusIcon,
+  ArrowRightIcon,
+  BanknotesIcon,
+} from "@heroicons/react/24/outline";
 
 export interface Expense {
   id: string;
@@ -19,16 +25,23 @@ interface Props {
   month: string;
 }
 
-const CATEGORY_COLOURS: Record<string, string> = {
-  stock: "bg-stone-100 text-stone-700",
-  rent: "bg-stone-100 text-stone-700",
-  utilities: "bg-amber-50 text-amber-700",
-  marketing: "bg-stone-50 text-stone-600",
-  staffing: "bg-stone-100 text-stone-700",
-  equipment: "bg-amber-50 text-amber-700",
-  repairs: "bg-red-50 text-red-700",
-  other: "bg-stone-900/10 text-stone-900/70",
+// Color restraint per design brief — every category uses the neutral
+// badge. The category label itself reads clearly; we don't need
+// semantic colour to distinguish "rent" from "utilities".
+const CATEGORY_BADGE: Record<string, string> = {
+  stock: "nx-badge-neutral",
+  rent: "nx-badge-neutral",
+  utilities: "nx-badge-neutral",
+  marketing: "nx-badge-neutral",
+  staffing: "nx-badge-neutral",
+  equipment: "nx-badge-neutral",
+  repairs: "nx-badge-neutral",
+  other: "nx-badge-neutral",
 };
+
+function badgeClass(cat: string) {
+  return CATEGORY_BADGE[cat] || "nx-badge-neutral";
+}
 
 function fmtCurrency(amount: number) {
   return new Intl.NumberFormat("en-AU", {
@@ -39,134 +52,186 @@ function fmtCurrency(amount: number) {
 }
 
 export default function ExpenseListClient({ expenses, monthTotals, monthTotal, month }: Props) {
-  const categories = Object.entries(monthTotals).filter(([, v]) => v > 0);
+  const categories = useMemo(
+    () => Object.entries(monthTotals).filter(([, v]) => v > 0),
+    [monthTotals]
+  );
+
+  const allCategoryFilters = useMemo(() => {
+    const set = new Set<string>();
+    expenses.forEach((e) => set.add(e.category));
+    return ["all", ...Array.from(set)];
+  }, [expenses]);
+
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  const visible = useMemo(() => {
+    if (activeCategory === "all") return expenses;
+    return expenses.filter((e) => e.category === activeCategory);
+  }, [expenses, activeCategory]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="font-semibold text-2xl font-semibold text-stone-900">Expenses</h1>
-        <Link
-          href="/expenses/new"
-          className="inline-flex items-center gap-2 bg-nexpura-charcoal text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Expense
-        </Link>
-      </div>
-
-      {/* Monthly summary */}
-      {monthTotal > 0 && (
-        <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-stone-900">
-              {month} — Totals by Category
-            </h2>
-            <span className="font-semibold text-lg font-semibold text-stone-900">
-              {fmtCurrency(monthTotal)}
-            </span>
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="mb-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Finance
+            </p>
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-stone-900 leading-[1.05] tracking-tight">
+              Expenses
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              Track business expenses by category and review monthly totals.
+            </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {categories.map(([cat, amount]) => (
-              <div key={cat} className="text-center">
-                <span
-                  className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full capitalize mb-1 ${
-                    CATEGORY_COLOURS[cat] || "bg-stone-900/10 text-stone-900/70"
-                  }`}
-                >
-                  {cat}
-                </span>
-                <p className="text-sm font-semibold text-stone-900">{fmtCurrency(amount)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* List */}
-      {expenses.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-xl p-16 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-stone-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
-          <h3 className="font-semibold text-lg font-semibold text-stone-900">No expenses yet</h3>
-          <p className="text-stone-500 mt-1 text-sm">Track your business expenses here.</p>
           <Link
             href="/expenses/new"
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-nexpura-charcoal text-white text-sm font-medium rounded-lg hover:bg-nexpura-charcoal-700 transition-colors"
+            className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
           >
-            Add first expense
+            <PlusIcon className="w-4 h-4" />
+            Add Expense
           </Link>
         </div>
-      ) : (
-        <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-stone-200">
-                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-5 py-3">
-                    Description
-                  </th>
-                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
-                    Category
-                  </th>
-                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
-                    Date
-                  </th>
-                  <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
-                    Invoice Ref
-                  </th>
-                  <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider px-4 py-3">
-                    Amount
-                  </th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-platinum">
-                {expenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-stone-50/60 transition-colors">
-                    <td className="px-5 py-3 text-sm font-medium text-stone-900">{expense.description}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                          CATEGORY_COLOURS[expense.category] || "bg-stone-900/10 text-stone-900/70"
-                        }`}
-                      >
+
+        {/* Monthly stat strip — hairline divider strip over ivory, mirroring
+            the InvoiceListClient pattern. Bare typography, no card chrome. */}
+        {monthTotal > 0 && (
+          <div className="mb-14">
+            <div className="flex items-baseline justify-between mb-8">
+              <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury">
+                {month} totals
+              </p>
+              <p className="font-serif text-4xl text-stone-900 leading-none tabular-nums tracking-tight">
+                {fmtCurrency(monthTotal)}
+              </p>
+            </div>
+            {categories.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-8 gap-x-6 sm:divide-x sm:divide-stone-200">
+                {categories.map(([cat, amount], idx) => (
+                  <div
+                    key={cat}
+                    className={`sm:px-8 ${idx === 0 ? "sm:first:pl-0" : ""} ${idx === categories.length - 1 ? "sm:last:pr-0" : ""}`}
+                  >
+                    <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-3 capitalize">
+                      {cat}
+                    </p>
+                    <p className="font-serif text-4xl text-stone-900 leading-none tabular-nums tracking-tight">
+                      {fmtCurrency(amount)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filter pills */}
+        {expenses.length > 0 && allCategoryFilters.length > 1 && (
+          <div className="flex items-center gap-2 mb-10 overflow-x-auto">
+            {allCategoryFilters.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap capitalize transition-all duration-300 ${
+                    isActive
+                      ? "bg-stone-900 text-white"
+                      : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
+                  }`}
+                >
+                  {cat === "all" ? "All" : cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* List */}
+        {visible.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <BanknotesIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+            <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+              {expenses.length === 0
+                ? "No expenses yet"
+                : `No ${activeCategory} expenses`}
+            </h3>
+            <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed mb-7">
+              {expenses.length === 0
+                ? "Track your business expenses to monitor spend across categories."
+                : "Try a different filter to see other expenses."}
+            </p>
+            {expenses.length === 0 ? (
+              <Link
+                href="/expenses/new"
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add first expense
+              </Link>
+            ) : (
+              <button
+                onClick={() => setActiveCategory("all")}
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                View all expenses
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {visible.map((expense) => (
+              <Link
+                key={expense.id}
+                href={`/expenses/${expense.id}`}
+                className="group block bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap mb-2.5">
+                      <span className={`${badgeClass(expense.category)} capitalize`}>
                         {expense.category}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-stone-500">
+                      {expense.invoice_ref && (
+                        <span className="font-mono text-xs text-stone-400 tabular-nums">
+                          {expense.invoice_ref}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
+                      {expense.description}
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-3 tabular-nums">
                       {new Date(expense.expense_date).toLocaleDateString("en-AU", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
                       })}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-stone-500">
-                      {expense.invoice_ref || <span className="text-stone-400">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-stone-900">
-                      {fmtCurrency(expense.amount)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/expenses/${expense.id}`}
-                        className="text-xs text-amber-700 font-medium hover:underline"
-                      >
-                        View →
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+                        Amount
+                      </p>
+                      <p className="font-serif text-2xl text-stone-900 leading-none tracking-tight tabular-nums">
+                        {fmtCurrency(expense.amount)}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300">
+                      View
+                      <ArrowRightIcon className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
