@@ -5,6 +5,7 @@ import ItemDetailClient from "./ItemDetailClient";
 import InventoryPhotos from "./InventoryPhotos";
 import { resolveReadLocationScope } from "@/lib/location-read-scope";
 import { matchesReviewOrStaffToken } from "@/lib/auth/review";
+import { signStoragePath, signStoragePaths } from "@/lib/supabase/signed-urls";
 
 const DEMO_TENANT = "0e8fe647-0cf4-44b6-ab12-3c6c7e561f0a";
 
@@ -94,6 +95,16 @@ export default async function InventoryDetailPage({
 
   const rawItem = item as unknown as { primary_image?: string | null; images?: string[] | null };
 
+  // cleanup #18 — `inventory-photos` bucket is private; the DB now stores
+  // bare paths. Resolve to 7-day signed URLs server-side so the client
+  // can render <Image src=…/> directly without re-signing on mount.
+  const additionalPaths = (rawItem.images ?? []) as string[];
+  const [primaryImageDisplayUrl, additionalImageDisplayUrlsRaw] = await Promise.all([
+    signStoragePath(admin, "inventory-photos", rawItem.primary_image ?? null),
+    signStoragePaths(admin, "inventory-photos", additionalPaths),
+  ]);
+  const additionalImageDisplayUrls = additionalImageDisplayUrlsRaw.filter((u): u is string => !!u);
+
   return (
     <>
       <ItemDetailClient item={typedItem} movements={typedMovements} readOnly={isReviewMode} />
@@ -101,8 +112,10 @@ export default async function InventoryDetailPage({
         <InventoryPhotos
           itemId={id}
           tenantId={tenantId}
-          primaryImage={rawItem.primary_image ?? null}
-          additionalImages={(rawItem.images ?? []) as string[]}
+          primaryImagePath={rawItem.primary_image ?? null}
+          primaryImageDisplayUrl={primaryImageDisplayUrl}
+          additionalImagePaths={additionalPaths}
+          additionalImageDisplayUrls={additionalImageDisplayUrls}
           readOnly={isReviewMode}
         />
       </div>
