@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import {
+  PlusIcon,
+  MagnifyingGlassIcon,
+  ShieldCheckIcon,
+  CheckBadgeIcon,
+  ClipboardDocumentIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 
 interface Passport {
   id: string;
@@ -47,209 +55,255 @@ export default function PassportsListClient({ passports, total, active, verified
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  const stats = [
+    { label: "Total", value: total },
+    { label: "Active", value: active },
+    { label: "Verified", value: verified },
+    { label: "Public", value: publicCount },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-semibold text-3xl text-stone-900">Digital Passports</h1>
-          <p className="text-sm text-gray-500 mt-1">Verifiable certificates of authenticity for every piece</p>
-        </div>
-        {!readOnly && (
-          <Link
-            href={`${basePath}/passports/new`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create Passport
-          </Link>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Total", value: total, color: "text-stone-900" },
-          { label: "Active", value: active, color: "text-amber-700" },
-          { label: "Verified", value: verified, color: "text-green-700" },
-          { label: "Public", value: publicCount, color: "text-stone-600" },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">{stat.label}</p>
-            <p className={`text-3xl font-semibold mt-1 ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Search & Filter */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[220px] max-w-xs">
-          <svg className="absolute left-3 top-2.5 w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search by name, UID or owner…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600"
-          />
-        </div>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
-        >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="archived">Archived</option>
-          <option value="reported_stolen">Reported Stolen</option>
-        </select>
-
-        <select
-          value={filterVisibility}
-          onChange={(e) => setFilterVisibility(e.target.value)}
-          className="px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600/30"
-        >
-          <option value="all">All Visibility</option>
-          <option value="public">Public</option>
-          <option value="private">Private</option>
-        </select>
-
-        {(search || filterStatus !== "all" || filterVisibility !== "all") && (
-          <button
-            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterVisibility("all"); }}
-            className="text-xs text-stone-400 hover:text-stone-600"
-          >
-            Clear filters
-          </button>
-        )}
-
-        <p className="text-sm text-stone-400 ml-auto">
-          {filtered.length} of {total}
-        </p>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-full bg-stone-100 flex items-center justify-center mb-4">
-              <svg className="w-7 h-7 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="font-semibold text-lg text-stone-900">No passports found</h3>
-            <p className="text-sm text-gray-500 mt-1 mb-4">
-              {search ? "Try a different search" : "Create your first digital jewellery passport"}
+    <div className="bg-nexpura-ivory min-h-screen -mx-6 sm:-mx-10 lg:-mx-16 -my-8 lg:-my-12">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="flex items-start justify-between gap-6 mb-14">
+          <div>
+            <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+              Provenance
             </p>
-            {!search && !readOnly && (
+            <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+              Digital Passports
+            </h1>
+            <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+              Verifiable certificates of authenticity for every piece.
+            </p>
+          </div>
+          {!readOnly && (
+            <Link
+              href={`${basePath}/passports/new`}
+              className="nx-btn-primary inline-flex items-center gap-2 shrink-0"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Create Passport
+            </Link>
+          )}
+        </div>
+
+        {/* Stat strip */}
+        {total > 0 && (
+          <div className="bg-white border border-stone-200 rounded-2xl mb-10">
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-stone-200">
+              {stats.map((stat) => (
+                <div key={stat.label} className="px-6 py-6">
+                  <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-2">
+                    {stat.label}
+                  </p>
+                  <p className="font-serif text-4xl text-stone-900 tabular-nums tracking-tight leading-none">
+                    {stat.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Search & Filter */}
+        <div className="flex flex-wrap gap-3 items-center mb-8">
+          <div className="relative flex-1 min-w-[240px] max-w-sm">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <input
+              type="text"
+              placeholder="Search by name, UID or owner…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+            />
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+            <option value="reported_stolen">Reported Stolen</option>
+          </select>
+
+          <select
+            value={filterVisibility}
+            onChange={(e) => setFilterVisibility(e.target.value)}
+            className="px-3 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+          >
+            <option value="all">All Visibility</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+
+          {(search || filterStatus !== "all" || filterVisibility !== "all") && (
+            <button
+              onClick={() => { setSearch(""); setFilterStatus("all"); setFilterVisibility("all"); }}
+              className="text-xs text-stone-400 hover:text-stone-700 transition-colors duration-200"
+            >
+              Clear filters
+            </button>
+          )}
+
+          <p className="text-sm text-stone-400 ml-auto tabular-nums">
+            {filtered.length} of {total}
+          </p>
+        </div>
+
+        {/* List */}
+        {filtered.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <ShieldCheckIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+            <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+              No passports found
+            </h3>
+            <p className="text-stone-500 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
+              {search || filterStatus !== "all" || filterVisibility !== "all"
+                ? "Try a different search or clear your filters."
+                : "Create your first digital jewellery passport to track provenance and authenticity."}
+            </p>
+            {!search && filterStatus === "all" && filterVisibility === "all" && !readOnly && (
               <Link
                 href={`${basePath}/passports/new`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors"
+                className="nx-btn-primary inline-flex items-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <PlusIcon className="w-4 h-4" />
                 Create Passport
               </Link>
             )}
+            {(search || filterStatus !== "all" || filterVisibility !== "all") && (
+              <button
+                onClick={() => { setSearch(""); setFilterStatus("all"); setFilterVisibility("all"); }}
+                className="nx-btn-primary inline-flex items-center gap-2"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-200 bg-gray-50/50">
-                  <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Passport UID</th>
-                  <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Title</th>
-                  <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
-                  <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Owner</th>
-                  <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="text-left px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Created</th>
-                  <th className="text-right px-5 py-3.5 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {filtered.map((passport) => (
-                  <tr key={passport.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-5 py-4">
-                      <span className="font-mono text-xs font-semibold bg-stone-100 text-amber-700 px-2 py-1 rounded">
-                        {passport.passport_uid}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 font-medium text-stone-900 max-w-48">
-                      <p className="truncate">{passport.title}</p>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500 capitalize">
-                      {passport.jewellery_type?.replace(/_/g, " ") || "—"}
-                    </td>
-                    <td className="px-5 py-4 text-gray-500">
-                      {passport.current_owner_name || "—"}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          passport.status === "active"
-                            ? "bg-green-50 text-green-700"
-                            : passport.status === "reported_stolen"
-                            ? "bg-red-50 text-red-600"
-                            : "bg-gray-100 text-gray-600"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            passport.status === "active" ? "bg-green-500" :
-                            passport.status === "reported_stolen" ? "bg-red-500" : "bg-gray-400"
-                          }`} />
-                          {passport.status.replace(/_/g, " ")}
+          <div className="space-y-4">
+            {filtered.map((passport) => {
+              const isStolen = passport.status === "reported_stolen";
+              const isActive = passport.status === "active";
+
+              return (
+                <div
+                  key={passport.id}
+                  className="group bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+                >
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 flex-wrap mb-2.5">
+                        <span className="font-mono text-xs text-stone-400 tabular-nums">
+                          {passport.passport_uid}
                         </span>
-                        {!passport.is_public && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                            Private
+                        {isActive ? (
+                          <span className="nx-badge-success">Active</span>
+                        ) : isStolen ? (
+                          <span className="nx-badge-danger">Reported Stolen</span>
+                        ) : (
+                          <span className="nx-badge-neutral capitalize">
+                            {passport.status.replace(/_/g, " ")}
                           </span>
                         )}
                         {passport.verified_at && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                            ✓ Verified
+                          <span className="nx-badge-success inline-flex items-center gap-1">
+                            <CheckBadgeIcon className="w-3.5 h-3.5" />
+                            Verified
+                          </span>
+                        )}
+                        {passport.is_public ? (
+                          <span className="nx-badge-info">Public</span>
+                        ) : (
+                          <span className="nx-badge-neutral">Private</span>
+                        )}
+                      </div>
+
+                      <Link
+                        href={`${basePath}/passports/${passport.id}`}
+                        className="block"
+                      >
+                        <h3 className="font-serif text-xl text-stone-900 leading-tight tracking-tight group-hover:text-nexpura-bronze transition-colors duration-300">
+                          {passport.title}
+                        </h3>
+                      </Link>
+
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 mt-3 text-sm text-stone-500">
+                        {passport.jewellery_type && (
+                          <span className="capitalize">
+                            {passport.jewellery_type.replace(/_/g, " ")}
+                          </span>
+                        )}
+                        {passport.current_owner_name && (
+                          <span>
+                            Owner{" "}
+                            <span className="text-stone-700">
+                              {passport.current_owner_name}
+                            </span>
+                          </span>
+                        )}
+                        <span>
+                          Created{" "}
+                          <span className="text-stone-700">
+                            {new Date(passport.created_at).toLocaleDateString("en-AU", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </span>
+                        {passport.verified_at && (
+                          <span>
+                            Verified{" "}
+                            <span className="text-stone-700">
+                              {new Date(passport.verified_at).toLocaleDateString("en-AU", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500 text-xs whitespace-nowrap">
-                      {new Date(passport.created_at).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-3">
+                    </div>
+
+                    <div className="flex flex-col items-end gap-3 shrink-0">
+                      <div className="flex items-center gap-4">
                         {passport.is_public && (
                           <button
                             onClick={() => copyVerifyLink(passport.passport_uid)}
-                            title="Copy verify link"
-                            className="text-xs text-stone-400 hover:text-amber-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-nexpura-bronze transition-colors duration-200"
                           >
-                            {copiedId === passport.passport_uid ? "✓ Copied" : "Copy Link"}
+                            <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                            {copiedId === passport.passport_uid ? "Copied" : "Copy link"}
                           </button>
                         )}
-                        <Link
-                          href={`${basePath}/passports/${passport.id}`}
-                          className="text-amber-700 hover:text-amber-700/80 text-xs font-medium transition-colors"
-                        >
-                          View
-                        </Link>
                         {!readOnly && (
                           <Link
                             href={`${basePath}/passports/${passport.id}/edit`}
-                            className="text-gray-400 hover:text-gray-600 text-xs font-medium transition-colors"
+                            className="text-xs text-stone-400 hover:text-stone-700 transition-colors duration-200"
                           >
                             Edit
                           </Link>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <Link
+                        href={`${basePath}/passports/${passport.id}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300"
+                      >
+                        View
+                        <ArrowRightIcon className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
