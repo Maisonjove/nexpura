@@ -3,6 +3,11 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  MagnifyingGlassIcon,
+  InboxIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 
 export interface DemoRequestSummary {
   id: string;
@@ -31,17 +36,13 @@ const STATUS_TABS: Array<{ value: StatusFilter; label: string }> = [
 function StatusBadge({ status }: { status: DemoRequestSummary["status"] }) {
   const cls =
     status === "new"
-      ? "bg-amber-50 text-amber-700"
+      ? "nx-badge-warning"
       : status === "scheduled"
-      ? "bg-emerald-50 text-emerald-700"
+      ? "nx-badge-success"
       : status === "completed"
-      ? "bg-stone-100 text-stone-700"
-      : "bg-red-50 text-red-700";
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${cls}`}>
-      {status}
-    </span>
-  );
+      ? "nx-badge-neutral"
+      : "nx-badge-danger";
+  return <span className={`${cls} capitalize`}>{status}</span>;
 }
 
 function formatDate(iso: string): string {
@@ -106,134 +107,126 @@ export default function DemoRequestsClient({ rows }: { rows: DemoRequestSummary[
   }, [rows, statusFilter, search]);
 
   return (
-    <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-      {/* Filter bar */}
-      <div className="px-4 py-3 border-b border-stone-200 flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex flex-wrap gap-1">
-          {STATUS_TABS.map((tab) => {
-            const active = statusFilter === tab.value;
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setStatusFilter(tab.value)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  active
-                    ? "bg-stone-900 text-white"
-                    : "text-stone-500 hover:bg-stone-100 hover:text-stone-900"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+    <div className="bg-nexpura-ivory min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-16 py-12 lg:py-16">
+        {/* Page Header */}
+        <div className="mb-12">
+          <p className="text-xs uppercase tracking-luxury text-stone-500 mb-3">
+            Admin
+          </p>
+          <h1 className="font-serif text-4xl sm:text-5xl text-stone-900 leading-tight tracking-tight">
+            Demo Requests
+          </h1>
+          <p className="text-stone-500 mt-4 max-w-xl leading-relaxed">
+            Prospects who asked for a guided demo. Schedule, mark complete, or decline.
+          </p>
         </div>
-        <div className="flex-1 sm:max-w-xs sm:ml-auto">
-          <input
-            type="search"
-            placeholder="Search name, email, business…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-300"
-          />
-        </div>
-      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-stone-200 bg-stone-50">
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">
-                Submitted
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">
-                Prospect
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">
-                Business
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">
-                Plan
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">
-                Status
-              </th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-stone-500 uppercase tracking-wide">
-                Scheduled
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-stone-400 text-sm">
-                  No requests match the current filters.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((r) => {
-                const fullName = [r.first_name, r.last_name].filter(Boolean).join(" ");
-                const detailHref = `/admin/demo-requests/${r.id}`;
-                // Whole-row click navigation. Joey 2026-05-04: the prior
-                // build only wrapped the prospect-name text in a Link,
-                // so clicking anywhere else in the row did nothing — the
-                // row LOOKED clickable (cursor on hover, hover bg) but
-                // wasn't. Now any click on the row routes to detail;
-                // the prospect name stays a Link so middle-click /
-                // cmd-click open the detail page in a new tab.
-                return (
-                  <tr
-                    key={r.id}
-                    role="link"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      // Allow native link semantics on actual <a>
-                      // descendants (cmd/ctrl-click on the prospect-name
-                      // link, etc). Skip the row navigation when the
-                      // click landed inside an anchor.
-                      if ((e.target as HTMLElement).closest("a")) return;
-                      router.push(detailHref);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        router.push(detailHref);
-                      }
-                    }}
-                    className="hover:bg-stone-50 transition-colors cursor-pointer focus:outline-none focus:bg-stone-50"
-                  >
-                    <td className="px-6 py-4 text-stone-500 whitespace-nowrap">
-                      {formatDate(r.created_at)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        href={detailHref}
-                        className="font-medium text-stone-900 hover:text-stone-600"
-                      >
-                        {fullName || r.email}
-                      </Link>
-                      <p className="text-xs text-stone-500 mt-0.5">{r.email}</p>
-                    </td>
-                    <td className="px-6 py-4 text-stone-700">
-                      {r.business_name || "—"}
-                      {r.num_stores && (
-                        <p className="text-xs text-stone-400 mt-0.5">
-                          {r.num_stores} store{r.num_stores === "1" ? "" : "s"}
+        {/* Filter pills + search */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {STATUS_TABS.map((tab) => {
+              const active = statusFilter === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setStatusFilter(tab.value)}
+                  className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all duration-300 ${
+                    active
+                      ? "bg-stone-900 text-white"
+                      : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:text-stone-900"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex-1 sm:max-w-xs sm:ml-auto relative">
+            <MagnifyingGlassIcon className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              placeholder="Search name, email, business…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
+            />
+          </div>
+        </div>
+
+        {/* Demo request list */}
+        {filtered.length === 0 ? (
+          <div className="bg-white border border-stone-200 rounded-2xl p-14 text-center">
+            <InboxIcon className="w-8 h-8 text-stone-300 mx-auto mb-5" />
+            <h3 className="font-serif text-2xl text-stone-900 tracking-tight mb-3">
+              No matching requests
+            </h3>
+            <p className="text-stone-500 text-sm max-w-sm mx-auto leading-relaxed">
+              Try a different filter or clear your search to see all demo requests.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((r) => {
+              const fullName = [r.first_name, r.last_name].filter(Boolean).join(" ") || r.email;
+              const detailHref = `/admin/demo-requests/${r.id}`;
+              return (
+                <Link
+                  key={r.id}
+                  href={detailHref}
+                  className="group block bg-white border border-stone-200 rounded-2xl p-6 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] hover:border-stone-300 transition-all duration-400"
+                >
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 flex-wrap mb-2.5">
+                        <StatusBadge status={r.status} />
+                        <span className="text-xs text-stone-400">
+                          {formatDate(r.created_at)}
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
+                        {fullName}
+                      </h3>
+                      {r.business_name && (
+                        <p className="text-sm text-stone-700 mt-1.5">
+                          {r.business_name}
+                          {r.num_stores && (
+                            <span className="text-stone-400">
+                              {" · "}
+                              {r.num_stores} store{r.num_stores === "1" ? "" : "s"}
+                            </span>
+                          )}
                         </p>
                       )}
-                    </td>
-                    <td className="px-6 py-4 text-stone-600 capitalize">{r.plan || "—"}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td className="px-6 py-4 text-stone-500 whitespace-nowrap">
-                      {formatDateTime(r.scheduled_at)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-4 text-xs text-stone-500">
+                        <span>{r.email}</span>
+                        {r.country && <span>{r.country}</span>}
+                        {r.plan && (
+                          <span className="capitalize">Plan: {r.plan}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-luxury mb-1.5">
+                          Scheduled
+                        </p>
+                        <p className="text-sm text-stone-700 tabular-nums whitespace-nowrap">
+                          {formatDateTime(r.scheduled_at)}
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-400 group-hover:text-nexpura-bronze transition-colors duration-300">
+                        View
+                        <ArrowRightIcon className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
