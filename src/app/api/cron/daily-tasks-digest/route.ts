@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { resend } from '@/lib/email/resend';
 import DailyTaskDigestEmail from '@/lib/email/templates/DailyTaskDigestEmail';
 import { safeBearerMatch } from '@/lib/timing-safe-compare';
+import { NEXPURA_DOGFOOD_TENANT_ID } from '@/lib/dogfood-tenant';
 
 export const GET = withSentryFlush(async (request: Request) => {
   // Check for auth (cron secret) — constant-time.
@@ -14,10 +15,22 @@ export const GET = withSentryFlush(async (request: Request) => {
 
   const supabase = createAdminClient();
 
-  // 1. Get all tenants with their timezone
+  // 1. Get all tenants with their timezone.
+  //
+  // half-fix-pair: cron-iterates-tenants family (cleanup #23 + #29-32,
+  // see docs/CONTRIBUTING.md §13). Three lifecycle crons
+  // (grace-period-checker / trial-end-checker / process-tenant-deletions)
+  // already filter on `tenants.deleted_at IS NULL`; this digest cron
+  // and its two siblings (scheduled-reports, shopify-reconciliation)
+  // were the asymmetric exposure — emailing ex-employees of
+  // soft-deleted tenants every day. Filter wound-down tenants and
+  // exclude the dogfood tenant for symmetry with the rest of the
+  // cron family.
   const { data: tenants, error: tenantError } = await supabase
     .from('tenants')
-    .select('id, name, timezone');
+    .select('id, name, timezone')
+    .is('deleted_at', null)
+    .neq('id', NEXPURA_DOGFOOD_TENANT_ID);
 
   if (tenantError || !tenants) {
     return NextResponse.json({ error: 'Failed to fetch tenants' }, { status: 500 });
