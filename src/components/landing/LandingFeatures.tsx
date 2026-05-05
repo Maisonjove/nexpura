@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 
 const features = [
@@ -58,10 +59,19 @@ export default function LandingFeatures() {
               {feature.description}
             </motion.p>
             <div className="relative aspect-square rounded-sm overflow-hidden mt-auto">
-              <img
+              {/* Next/Image — auto WebP/AVIF + responsive srcset + lazy
+                  load. Pre-fix this was a raw <img> serving 1.7MB /
+                  2.2MB / 365KB PNGs to every landing visitor. First
+                  panel gets priority so it stops blocking LCP; the
+                  others stay lazy below-fold. */}
+              <Image
                 src={feature.image}
                 alt={feature.title}
-                className="absolute inset-0 w-full h-full object-cover"
+                fill
+                sizes="(min-width: 1024px) 380px, (min-width: 768px) 33vw, 100vw"
+                className="object-cover"
+                priority={index === 0}
+                quality={75}
               />
             </div>
           </div>
