@@ -9,6 +9,7 @@ import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { LiveRegionProvider } from "@/components/LiveRegion";
 import { PrehydrationPrefetch } from "@/components/PrehydrationPrefetch";
 import { HotRouteBootstrap } from "@/components/HotRouteBootstrap";
+import { DeployVersionBanner } from "@/components/DeployVersionBanner";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -155,6 +156,18 @@ export default function RootLayout({
             </Suspense>
             {children}
             <OfflineIndicator />
+            {/*
+              Client-side deploy-skew detection (C-06). Mounts a global
+              fetch interceptor that compares the `x-deployment-id`
+              response header against `NEXT_PUBLIC_BUILD_ID`. On
+              mismatch, emits a Sentry breadcrumb + capture event and
+              soft-reloads after a 2s banner. Production-only; no-op in
+              dev. See src/components/DeployVersionBanner.tsx for the
+              full rationale.
+            */}
+            <Suspense fallback={null}>
+              <DeployVersionBanner />
+            </Suspense>
           </PWAProvider>
           <Toaster position="bottom-right" richColors />
         </LiveRegionProvider>

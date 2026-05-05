@@ -32,6 +32,73 @@ const nextConfig: NextConfig = {
   // cacheComponents enabled globally. Preview branch proved 360/360 pages
   // generate cleanly with this flag and the segment-config exports stripped.
   cacheComponents: true,
+  // Stable, deterministic build ID derived from the deploy SHA.
+  //
+  // C-06 fix — RSC version skew:
+  // Next's default `generateBuildId` produces a random opaque string per
+  // build, so a client bundle from Deploy A and the RSC payload from
+  // Deploy B don't share an identity the runtime can compare. The
+  // built-in `x-deployment-id` mismatch detection works on Vercel for
+  // first-party fetches, but the SW (public/sw.js) proxies RSC requests
+  // via the Cache API — that means a stale-cached RSC response can be
+  // served to a client that already loaded the new HTML, with neither
+  // side flagging skew.
+  //
+  // Deriving the build ID from VERCEL_GIT_COMMIT_SHA gives us:
+  //   1. The same `build-<sha12>` token that scripts/inject-sw-version.mjs
+  //      writes into the SW's CACHE_VERSION → SW cache and Next's build
+  //      ID share a single key.
+  //   2. A predictable `process.env.NEXT_PUBLIC_BUILD_ID` value the
+  //      client can read at build time and compare against the
+  //      `x-deployment-id` response header on every fetch.
+  //   3. Determinism — re-deploying the same SHA produces the same
+  //      build ID, so a redeploy without code change doesn't trigger
+  //      a spurious skew banner.
+  //
+  // Local dev: returning `null` lets Next generate its random per-dev-server
+  // ID. The DeployVersionBanner is a no-op in development anyway.
+  async generateBuildId() {
+    const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+    if (sha && sha.length > 0) return `build-${sha.slice(0, 12)}`;
+    return null;
+  },
+  // C-06 verification finding (2026-05-05). Two-pass fix:
+  //
+  // First pass added `deploymentId: build-<sha12>` here so Next would
+  // emit `x-deployment-id`. Vercel rejected the build:
+  //   "The NEXT_DEPLOYMENT_ID environment variable value 'dpl_xxx' does
+  //    not match the provided deploymentId 'build-<sha12>' in the config"
+  // — Vercel auto-injects NEXT_DEPLOYMENT_ID and Next refuses any
+  // explicit `deploymentId` that conflicts with it. We can't anchor
+  // skew detection on a SHA-derived token from inside this file alone.
+  //
+  // Second pass (this one): align the client-side anchor and the
+  // header the client reads with the surface Vercel actually provides:
+  //   - server emits `x-nextjs-deployment-id: dpl_xxx` natively
+  //     (no `deploymentId` config needed; Vercel does it)
+  //   - client reads `NEXT_PUBLIC_BUILD_ID = NEXT_DEPLOYMENT_ID` at
+  //     build time (Vercel auto-injects this; we just expose it)
+  //   - DeployVersionBanner reads `x-nextjs-deployment-id` from the
+  //     response (matches what the server emits; same `dpl_xxx` value)
+  //
+  // `generateBuildId` is kept — it owns the build artifact's SHA-based
+  // identity for the SW cache key (scripts/inject-sw-version.mjs).
+  // The skew-detection layer is intentionally a different anchor:
+  // SW cache eviction is per-build-artifact; skew detection is per-
+  // Vercel-deploy. They are different invariants.
+  //
+  // Tradeoff acknowledged: re-deploying the same Git SHA on Vercel
+  // produces a fresh `dpl_xxx`, so the banner will fire on the
+  // already-loaded client. That's acceptable — a soft reload after a
+  // promotional redeploy is a benign UX cost, and the reload-blocker
+  // registry preserves in-progress state.
+  env: {
+    // Expose Vercel's deploy ID to client code at build time. Reading
+    // `process.env.NEXT_PUBLIC_BUILD_ID` from a client component returns
+    // the inlined string token. Falls back to empty string (banner stays
+    // dormant) when there's no Vercel deploy context — local dev, etc.
+    NEXT_PUBLIC_BUILD_ID: process.env.NEXT_DEPLOYMENT_ID ?? "",
+  },
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching
