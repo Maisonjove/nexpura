@@ -6,16 +6,21 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'heavy');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
   try {
+    // Half-fix-pair audit finding #5: order rearranged — auth check now
+    // runs before rate-limit so we can key the limiter by user.id (mirror
+    // sibling /api/migration/upload). Pre-fix: IP-keyed limiter ran
+    // before auth, which both penalised shared-NAT users and was
+    // bypassable by rotating x-forwarded-for. The 401-on-no-user path
+    // stays cheap (no DB call until rate-limit passes).
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { success } = await checkRateLimit(`migration-create-session:${user.id}`, 'heavy');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
 
     const { data: profile } = await supabase
       .from('users')
