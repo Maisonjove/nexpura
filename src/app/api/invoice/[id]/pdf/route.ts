@@ -197,9 +197,13 @@ export const GET = withSentryFlush(async (
   try {
     buffer = await renderToBuffer(element as unknown as ReactElement<DocumentProps, JSXElementConstructor<DocumentProps>>);
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message + ' | ' + (err.stack?.split('\n')[1] ?? '') : String(err);
-    logger.error('[invoice/pdf] renderToBuffer failed:', err);
-    return new NextResponse("PDF Error: " + errMsg, { status: 500 });
+    // P2-A Item 8: previously echoed err.message + first stack frame in the
+    // HTTP response body. That leaked file paths from the React-PDF render
+    // pipeline (node_modules/@react-pdf/...:line:col) to any authenticated
+    // user — light surface-area mapping but unnecessary. Log the full err
+    // (with stack) via logger; return a generic body to the caller.
+    logger.error('[invoice/pdf] renderToBuffer failed', { error: err });
+    return new NextResponse("PDF render failed — please retry or contact support", { status: 500 });
   }
 
   const suffix = format === "thermal" ? "-thermal" : "";
