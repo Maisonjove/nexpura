@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
+import logger from "@/lib/logger";
 import { LOCATION_COOKIE } from "@/lib/location-cookie";
 
 // Server-side: read the user's selected location from the cookie. Returns
@@ -36,13 +37,36 @@ export interface Location {
 }
 
 /**
- * Get all locations the current user has access to
- * Returns null if user has access to ALL locations (owner/manager)
- * Returns array of location IDs if restricted
+ * Get all locations the current user has access to.
+ *
+ * Canonical contract (matches LocationContext.tsx + TransfersClient.tsx +
+ * the 13 read sites that consume the result):
+ *   null         → all-access (owner/manager, OR explicit
+ *                  allowed_location_ids=null on team_members)
+ *   string[]     → restricted to exactly these location IDs
+ *   string[] = [] → no access at all (caller produces empty result)
+ *
+ * Owner/manager fallback (C-02 fix, 2026-05-05): when no team_members
+ * row exists for (user_id, tenant_id), check public.users.role. If the
+ * user is the tenant's owner or manager according to public.users,
+ * treat them as having full access. This shouldn't happen in normal
+ * flow, but historical drift can leave owners without the row —
+ * specifically the (auth)/onboarding/actions.ts path between
+ * 2026-03-13 and 2026-04-28 (10 affected owners) inserted users +
+ * tenant + subscription + location but never wrote team_members.
+ * Fail-open here is correct because the role itself authorizes the
+ * access — and the upstream onboarding fix in this same PR ensures
+ * every NEW signup writes the row.
+ *
+ * Without this fallback, getSales (sales-actions.ts) and every other
+ * location-scoped read collapses to an impossible-UUID filter,
+ * returning 0 rows and rendering an empty list to a tenant owner who
+ * actually has data — exactly the C-02 audit finding (hello@nexpura
+ * /sales returned [] despite the tenant having a sale).
  */
 export async function getUserLocationIds(userId: string, tenantId: string): Promise<string[] | null> {
   const admin = createAdminClient();
-  
+
   // Get team member record
   const { data: member } = await admin
     .from("team_members")
@@ -50,14 +74,41 @@ export async function getUserLocationIds(userId: string, tenantId: string): Prom
     .eq("user_id", userId)
     .eq("tenant_id", tenantId)
     .single();
-  
-  if (!member) return [];
-  
+
+  if (!member) {
+    // No team_members row — fall back to public.users.role for the same
+    // tenant. Owners/managers get all-access; anyone else falls through
+    // to the existing zero-allow-list behaviour (caller produces empty
+    // result). The fallback fires as a Sentry breadcrumb (info level)
+    // so we can watch how often this triggers post-deploy and confirm
+    // the rate decays as the backfill + onboarding fix close the gap.
+    const { data: userRow } = await admin
+      .from("users")
+      .select("role, tenant_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (
+      userRow?.tenant_id === tenantId &&
+      (userRow.role === "owner" || userRow.role === "manager")
+    ) {
+      logger.info("[locations] getUserLocationIds owner/manager fallback fired", {
+        userId,
+        tenantId,
+        usersRole: userRow.role,
+        reason: "no team_members row; users.role authorizes access",
+      });
+      return null;
+    }
+
+    return [];
+  }
+
   // Owners and managers have access to all locations
   if (member.role === "owner" || member.role === "manager") {
     return null; // null = all locations
   }
-  
+
   // If allowed_location_ids is null, they have all access
   // If it's an array, they're restricted to those locations
   return member.allowed_location_ids ?? null;
