@@ -25,8 +25,15 @@ import {
   removeEmailDomain,
   updateFromName,
   updateReplyToEmail,
+  sendDomainTestEmail,
   DnsRecord,
 } from "./actions";
+
+type TestState =
+  | { status: "idle" }
+  | { status: "sending" }
+  | { status: "sent"; sentTo: string; at: number }
+  | { status: "error"; message: string };
 
 interface Props {
   emailDomain: {
@@ -59,6 +66,26 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
   const [showDnsRecords, setShowDnsRecords] = useState(false);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [testState, setTestState] = useState<TestState>({ status: "idle" });
+
+  async function handleSendTestEmail() {
+    setTestState({ status: "sending" });
+    const result = await sendDomainTestEmail();
+    if (result.error) {
+      setTestState({ status: "error", message: result.error });
+    } else if (result.success && result.sentTo) {
+      setTestState({ status: "sent", sentTo: result.sentTo, at: Date.now() });
+    } else {
+      // Defensive: handler returned neither error nor success — treat
+      // as failure rather than silently render "Sent". L-06 audit
+      // (desktop-Opus 2.6): never show "Sent" without a confirmed
+      // success signal.
+      setTestState({
+        status: "error",
+        message: "Email provider returned an unexpected response. Try again.",
+      });
+    }
+  }
 
   const statusConfig = emailDomain ? STATUS_CONFIG[emailDomain.status] : null;
   const StatusIcon = statusConfig?.icon;
@@ -226,6 +253,62 @@ export default function EmailDomainClient({ emailDomain, fromName, businessName,
                 &gt;
               </span>
             </p>
+
+            <div className="mt-6 pt-6 border-t border-stone-100">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium text-stone-900">Send a test email</p>
+                  <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                    Sends a sample email to your account inbox using the
+                    sender configured above. Use this to verify the
+                    domain + sender name + reply-to before relying on
+                    customer emails.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  disabled={!isOwner || testState.status === "sending" || isPending}
+                  className="nx-btn-secondary inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {testState.status === "sending" ? (
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <EnvelopeIcon className="w-4 h-4" />
+                      Send test email
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Three-state result — never render "Sent" without an explicit
+                  success signal from the handler. L-06 audit requirement. */}
+              {testState.status === "sent" && (
+                <p
+                  role="status"
+                  className="mt-3 text-sm text-emerald-700 flex items-center gap-2"
+                  aria-live="polite"
+                >
+                  <CheckCircleIcon className="w-4 h-4 shrink-0" />
+                  Sent to{" "}
+                  <span className="font-mono">{testState.sentTo}</span>. Check your inbox.
+                </p>
+              )}
+              {testState.status === "error" && (
+                <p
+                  role="alert"
+                  className="mt-3 text-sm text-red-600 flex items-start gap-2"
+                  aria-live="assertive"
+                >
+                  <ExclamationCircleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>Send failed: {testState.message}</span>
+                </p>
+              )}
+            </div>
           </section>
 
           {/* Reply-To Email Card - Show when NO custom domain */}

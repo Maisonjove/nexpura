@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import logger from "@/lib/logger";
+import { resend } from "@/lib/email/resend";
 
 import { flushSentry } from "@/lib/sentry-flush";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -406,4 +407,126 @@ export async function getTenantEmailSender(): Promise<{ from: string; replyTo?: 
     from: `${fromName} <notifications@nexpura.com>`,
     replyTo: replyTo || undefined,
   };
+}
+
+/**
+ * Send a test email from the tenant's currently-configured sender to
+ * the authed user's inbox. Lets owners verify their email setup
+ * (domain, sender name, reply-to) before relying on it for customer
+ * emails.
+ *
+ * Audit ID L-06 (desktop-Opus 2.6): the prior surface didn't exist,
+ * and the closest analogue (marketing/bulk-email "Send test")
+ * silently rendered "Sent" in some failure paths because the UI
+ * didn't differentiate "delivered" from "queued". This handler:
+ *   - awaits resend.emails.send (no fire-and-forget)
+ *   - destructures { data, error } and surfaces error.message verbatim
+ *     (subject to the safe-message helper)
+ *   - never returns success when Resend signalled failure
+ *
+ * Auth: owner OR manager (matches updateFromName / updateReplyToEmail).
+ *
+ * Recipient: ALWAYS the authed user's email from auth.users — not a
+ * form input. A test that lets the user type any address would let
+ * an attacker probe internal email validity, and the spec from
+ * desktop-Opus assumes "test" means "to me".
+ */
+export async function sendDomainTestEmail(): Promise<{
+  success?: boolean;
+  sentTo?: string;
+  error?: string;
+}> {
+  let ctx;
+  try {
+    ctx = await getAuthContext();
+  } catch {
+    return { error: "Not authenticated" };
+  }
+
+  // Owners + managers (mirrors updateFromName / updateReplyToEmail).
+  if (ctx.role !== "owner" && ctx.role !== "manager") {
+    return { error: "Only owners and managers can send test emails." };
+  }
+
+  // Pull the recipient strictly from the authed user — never from input.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const recipient = user?.email;
+  if (!recipient) {
+    return { error: "Your account has no email on file. Sign out and sign in again." };
+  }
+
+  const sender = await getTenantEmailSender();
+
+  // Render the body using the same fromName the tenant has configured
+  // so the "what will customers see" preview is faithful.
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f4; margin: 0; padding: 40px 20px;">
+      <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 32px;">
+        <h1 style="color: #44403c; font-size: 20px; font-weight: 600; margin: 0 0 16px;">Email setup looks good</h1>
+        <p style="color: #44403c; font-size: 15px; line-height: 1.6; margin: 0 0 12px;">
+          This is a test email from your Nexpura email settings. If you can read this, your sender configuration is working.
+        </p>
+        <p style="color: #78716c; font-size: 13px; line-height: 1.6; margin: 0;">
+          From: ${sender.from}<br/>
+          Reply-to: ${sender.replyTo ?? "(none — uses From address)"}<br/>
+          Sent at: ${new Date().toISOString()}
+        </p>
+      </div>
+    </body>
+    </html>
+  `.trim();
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: sender.from,
+      replyTo: sender.replyTo,
+      to: recipient,
+      subject: "Nexpura email test",
+      html,
+    });
+
+    if (error) {
+      // Surface Resend's error verbatim. These messages are already
+      // user-safe (e.g., "The to address is not a valid email
+      // address.", "Domain is not verified.") — they tell the owner
+      // exactly what to fix without leaking secrets.
+      logger.error("[settings/email] sendDomainTestEmail Resend error", {
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        recipient,
+        from: sender.from,
+        err: error,
+      });
+      await flushSentry();
+      return { error: error.message ?? "SMTP send failed" };
+    }
+
+    if (!data?.id) {
+      // Defensive: if Resend returns success-without-id, treat as
+      // ambiguous and surface as failure rather than report "sent".
+      logger.error("[settings/email] sendDomainTestEmail returned no id", {
+        tenantId: ctx.tenantId,
+        recipient,
+      });
+      await flushSentry();
+      return { error: "Email provider returned an unexpected response. Try again." };
+    }
+
+    return { success: true, sentTo: recipient };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logger.error("[settings/email] sendDomainTestEmail threw", {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      recipient,
+      err,
+    });
+    await flushSentry();
+    return { error: message };
+  }
 }
