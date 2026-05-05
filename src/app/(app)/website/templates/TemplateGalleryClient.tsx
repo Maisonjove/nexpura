@@ -21,6 +21,12 @@ export default function TemplateGalleryClient({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // M-09: in-page iframe preview. Pre-fix the "Preview template" Link
+  // did a hard navigation away from the gallery; user had to back-
+  // button to return and lost their scroll position. Modal + iframe
+  // keeps them on the gallery and lets them flip through multiple
+  // templates rapidly.
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
   function handleApply(template: Template) {
     if (confirmId !== template.id) {
@@ -110,12 +116,13 @@ export default function TemplateGalleryClient({
           </p>
 
           <div className="mt-auto pt-2 flex flex-col sm:flex-row gap-2">
-            <Link
-              href={`/website/templates/${t.id}`}
+            <button
+              type="button"
+              onClick={() => setPreviewTemplate(t)}
               className="flex-1 text-center px-4 py-2.5 text-sm font-medium rounded-lg border border-stone-300 text-stone-700 hover:border-stone-500 hover:text-stone-900 transition-colors"
             >
               Preview template
-            </Link>
+            </button>
             <button
               onClick={() => handleApply(t)}
               disabled={isThisPending}
@@ -138,37 +145,94 @@ export default function TemplateGalleryClient({
     );
   });
 
+  // M-09: shared preview-iframe modal — rendered for both `embedded`
+  // and full-page variants. Sandbox flags allow scripts (template
+  // pages render section components that may include client JS) +
+  // same-origin (the iframe loads /website/templates/[id] from the
+  // same Vercel deployment). No allow-popups / allow-top-navigation
+  // — keeps the preview locked inside the iframe.
+  const previewModal = previewTemplate ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div
+        className="absolute inset-0"
+        aria-hidden="true"
+        onClick={() => setPreviewTemplate(null)}
+      />
+      <div className="relative bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-200 bg-stone-50">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-widest text-stone-500">Previewing</p>
+            <h3 className="text-sm font-semibold text-stone-900 truncate">{previewTemplate.name}</h3>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                const t = previewTemplate;
+                setPreviewTemplate(null);
+                if (t) handleApply(t);
+              }}
+              className="px-3 py-1.5 text-sm font-medium bg-stone-900 text-white rounded-md hover:bg-stone-700 transition-colors"
+            >
+              Use this template
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewTemplate(null)}
+              className="px-3 py-1.5 text-sm font-medium border border-stone-300 text-stone-700 rounded-md hover:bg-stone-100"
+              aria-label="Close preview"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <iframe
+          src={`/website/templates/${previewTemplate.id}?embed=1`}
+          title={`${previewTemplate.name} preview`}
+          className="flex-1 w-full bg-white"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </div>
+    </div>
+  ) : null;
+
   if (embedded) {
     return (
-      <div className="space-y-4">
-        <p className="text-xs text-stone-500 px-1">
-          Ten polished jewellery website templates. Preview any one, then apply it as a starting point — every page and section is editable in the builder.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{cards}</div>
-      </div>
+      <>
+        <div className="space-y-4">
+          <p className="text-xs text-stone-500 px-1">
+            Ten polished jewellery website templates. Preview any one, then apply it as a starting point — every page and section is editable in the builder.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{cards}</div>
+        </div>
+        {previewModal}
+      </>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-10 space-y-8">
-      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <Link
-            href="/website"
-            className="text-xs text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
-          >
-            ← Back to website builder
-          </Link>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 mt-2">
-            Pick a template
-          </h1>
-          <p className="text-stone-500 mt-1 text-sm sm:text-base">
-            Ten polished jewellery website templates. Preview any one, then apply it as a starting point — every page and section is editable in the builder.
-          </p>
-        </div>
-      </header>
+    <>
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:py-10 space-y-8">
+        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <Link
+              href="/website"
+              className="text-xs text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
+            >
+              ← Back to website builder
+            </Link>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-stone-900 mt-2">
+              Pick a template
+            </h1>
+            <p className="text-stone-500 mt-1 text-sm sm:text-base">
+              Ten polished jewellery website templates. Preview any one, then apply it as a starting point — every page and section is editable in the builder.
+            </p>
+          </div>
+        </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{cards}</div>
-    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{cards}</div>
+      </div>
+      {previewModal}
+    </>
   );
 }
