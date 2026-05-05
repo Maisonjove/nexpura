@@ -16,7 +16,12 @@ import {
   SparklesIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import { toggleAutomation, updateAutomation } from "./actions";
+import {
+  toggleAutomation,
+  updateAutomation,
+  previewAutomationMatches,
+  type AutomationTestRunResult,
+} from "./actions";
 
 interface Automation {
   id: string;
@@ -188,6 +193,18 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // M-08: per-automation test-run result. Keyed by automationType.
+  const [testRunResult, setTestRunResult] = useState<
+    Record<string, AutomationTestRunResult & { at: number }>
+  >({});
+  const [testRunPending, setTestRunPending] = useState<string | null>(null);
+
+  async function handleTestRun(type: string) {
+    setTestRunPending(type);
+    const result = await previewAutomationMatches(type);
+    setTestRunPending(null);
+    setTestRunResult((prev) => ({ ...prev, [type]: { ...result, at: Date.now() } }));
+  }
 
   function getAutomation(type: string): Automation | undefined {
     return automations.find((a) => a.automation_type === type);
@@ -258,20 +275,46 @@ export default function AutomationsClient({ automations, templates, tenantId }: 
                 {config.description}
               </p>
 
-              {hasSettings && (
+              <div className="flex items-center gap-4 mt-4 flex-wrap">
+                {hasSettings && (
+                  <button
+                    onClick={() => setExpanded(isExpanded ? null : type)}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-nexpura-bronze transition-colors duration-200"
+                    aria-expanded={isExpanded}
+                    aria-controls={`automation-settings-${type}`}
+                  >
+                    {isExpanded ? "Hide settings" : "Configure"}
+                    <ChevronDownIcon
+                      className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                )}
+                {/* M-08: Test run button — counts customers that would match
+                    this automation today without sending. */}
                 <button
-                  onClick={() => setExpanded(isExpanded ? null : type)}
-                  className="inline-flex items-center gap-1.5 mt-4 text-xs font-medium text-stone-500 hover:text-nexpura-bronze transition-colors duration-200"
-                  aria-expanded={isExpanded}
-                  aria-controls={`automation-settings-${type}`}
+                  type="button"
+                  onClick={() => handleTestRun(type)}
+                  disabled={testRunPending === type}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-nexpura-bronze transition-colors duration-200 disabled:opacity-50"
                 >
-                  {isExpanded ? "Hide settings" : "Configure"}
-                  <ChevronDownIcon
-                    className={`w-3.5 h-3.5 transition-transform duration-300 ${
-                      isExpanded ? "rotate-180" : ""
-                    }`}
-                  />
+                  {testRunPending === type ? "Running…" : "Test run"}
                 </button>
+              </div>
+              {testRunResult[type] && (
+                <p
+                  role="status"
+                  className="mt-2 text-xs text-stone-600 bg-stone-50 border border-stone-200 rounded-md px-3 py-1.5 inline-block"
+                >
+                  {testRunResult[type].error
+                    ? `Test run failed: ${testRunResult[type].error}`
+                    : testRunResult[type].unsupported
+                      ? testRunResult[type].reason ?? "Test run not supported."
+                      : `Would match ${testRunResult[type].matchedCount ?? 0} customer${
+                          (testRunResult[type].matchedCount ?? 0) === 1 ? "" : "s"
+                        } if fired now (no email sent).`}
+                </p>
               )}
             </div>
 
