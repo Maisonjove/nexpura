@@ -15,6 +15,7 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   ShieldCheckIcon,
+  HeartIcon,
 } from "@heroicons/react/24/outline";
 
 const NAV_ITEMS = [
@@ -23,6 +24,9 @@ const NAV_ITEMS = [
   { label: "Subscriptions", href: "/admin/subscriptions", icon: CreditCardIcon, exact: false },
   { label: "Revenue", href: "/admin/revenue", icon: CurrencyDollarIcon, exact: false },
   { label: "Demo Requests", href: "/admin/demo-requests", icon: EnvelopeIcon, exact: false },
+  // Section 4 #9: technical-health dashboard. Sibling to /admin/ops
+  // (business-state issues — past-due tenants, stuck repairs).
+  { label: "Health", href: "/admin/health", icon: HeartIcon, exact: false },
   { label: "Settings", href: "/admin/settings", icon: Cog6ToothIcon, exact: false },
 ];
 
