@@ -4,17 +4,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth-context";
 
 // Section 10.2 (Kaitlyn 2026-05-02 brief): server action behind the
-// /passports/verify form. Looks up a passport by either its
-// passport_uid (legacy NXP-XXXXXX format) or its global identity_number
-// (numeric 100000001+). Tenant-scoped — staff inside tenant A can only
-// verify their own passports here. The public-facing /verify/[uid]
-// route is the cross-tenant surface for end customers.
+// /passports/verify form. Looks up a passport by either:
+//   - public_uid (M-10 unguessable UUID — preferred for new passports)
+//   - passport_uid (legacy NXP-XXXXXX or numeric format)
+//   - identity_number (numeric 100000001+, legacy)
+// Tenant-scoped — staff inside tenant A can only verify their own
+// passports here. The public-facing /verify/[uid] route is the
+// cross-tenant surface for end customers.
 export type VerifyResult =
   | {
       found: true;
       data: {
         id: string;
         passport_uid: string;
+        public_uid: string | null;
         identity_number: number | null;
         title: string;
         jewellery_type: string | null;
@@ -43,9 +46,22 @@ export async function verifyPassport(rawSerial: string): Promise<VerifyResult> {
 
   const admin = createAdminClient();
   const baseColumns =
-    "id, passport_uid, identity_number, title, jewellery_type, metal_type, stone_type, primary_image, status, is_public, verified_at, created_at, current_owner_name";
+    "id, passport_uid, public_uid, identity_number, title, jewellery_type, metal_type, stone_type, primary_image, status, is_public, verified_at, created_at, current_owner_name";
 
-  // Try passport_uid first (case-insensitive — passports issued before
+  // M-10: try public_uid (UUID v4) FIRST — preferred for new passports.
+  // Format check before query keeps the eq() filter tight.
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(serial)) {
+    const { data: byPublic } = await admin
+      .from("passports")
+      .select(baseColumns)
+      .eq("tenant_id", tenantId)
+      .ilike("public_uid", serial)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (byPublic) return { found: true, data: byPublic as VerifyResult extends { found: true; data: infer D } ? D : never };
+  }
+
+  // Try passport_uid (case-insensitive — passports issued before
   // the trigger normalised case may be stored either way).
   const { data: byUid } = await admin
     .from("passports")

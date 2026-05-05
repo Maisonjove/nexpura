@@ -57,8 +57,12 @@ export async function GET(
 
   const customer = Array.isArray(passport.customers) ? passport.customers[0] : passport.customers;
 
+  // M-10: prefer public_uid for QR data + filename — that's what the
+  // /verify/[uid] public route accepts as the unenumerable id. Falls
+  // back to legacy passport_uid for passports issued before the
+  // backfill ran, then to internal uuid as last resort.
   const passportData = {
-    passportNumber: passport.passport_uid ?? passport.id,
+    passportNumber: passport.public_uid ?? passport.passport_uid ?? passport.id,
     itemName: passport.title,
     description: passport.description,
     tenantName: tenant?.business_name ?? tenant?.name ?? "Jewellery Studio",
