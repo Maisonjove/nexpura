@@ -169,7 +169,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const { data: profile } = await admin
       .from("users")
       .select(
-        "totp_enabled, tenant_id, role, tenants(slug, name, business_name, business_type, currency, timezone)",
+        "totp_enabled, tenant_id, role, tenants(slug, name, business_name, business_type, currency, timezone, require_2fa_for_staff)",
       )
       .eq("id", data.user.id)
       .maybeSingle();
@@ -185,6 +185,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         business_type?: string | null;
         currency?: string | null;
         timezone?: string | null;
+        require_2fa_for_staff?: boolean | null;
       } | null;
     } | null;
 
@@ -228,6 +229,38 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
           requires2FA: true,
           userId: data.user.id,
           email: data.user.email,
+        }),
+      );
+    }
+
+    // M-05 (desktop-Opus, narrow scope): tenant-level 2FA enforcement.
+    // When the owner has enabled `tenants.require_2fa_for_staff`, any
+    // staff (non-owner) who hasn't enrolled TOTP is bounced into the
+    // setup flow before they can access the app shell. Owners are
+    // exempt — they own the toggle and locking themselves out is a
+    // recovery problem. Allowlisted platform admin
+    // (germanijoey@yahoo.com, tenant_id=NULL) is also exempt — different
+    // tenant ownership model.
+    const tenantRequires2fa = profileTyped?.tenants?.require_2fa_for_staff === true;
+    const isOwner = profileTyped?.role === "owner";
+    const isAdmin = isAllowlistedAdmin(data.user.email);
+    if (
+      tenantRequires2fa &&
+      !profileTyped?.totp_enabled &&
+      !isOwner &&
+      !isAdmin
+    ) {
+      // Redirect into the setup flow with a flag so the page can
+      // render an explanatory banner. The user is authenticated at
+      // this point (cookies set) — they can complete enrollment +
+      // come back. Middleware AAL2 enforcement (PR-05) handles the
+      // belt-and-suspenders gate after enrollment so the user can't
+      // skip /verify-2fa on subsequent navigations.
+      return attachShellCookie(
+        NextResponse.json({
+          success: true,
+          redirectTo: "/settings/two-factor?enrolment_required=1",
+          tenantSlug: profileTyped?.tenants?.slug ?? null,
         }),
       );
     }

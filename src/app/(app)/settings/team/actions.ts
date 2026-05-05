@@ -485,3 +485,58 @@ export async function updateTeamMemberNotifications(
     return { error: "Operation failed" };
   }
 }
+
+/**
+ * M-05 (desktop-Opus, narrow scope): tenant-level 2FA enforcement
+ * toggle. Sets tenants.require_2fa_for_staff for the caller's
+ * tenant. When TRUE, staff (non-owner) sign-ins without TOTP are
+ * bounced to /settings/two-factor?enrolment_required=1 (login route
+ * branch).
+ *
+ * Owner-only — staff must not be able to flip the toggle that
+ * gates them out of the app.
+ */
+export async function setTenantRequire2faForStaff(
+  enabled: boolean,
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    await requireRole("owner");
+  } catch {
+    return { error: "Only the tenant owner can change the 2FA-required policy." };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const admin = createAdminClient();
+  const { data: userData } = await admin
+    .from("users")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+  if (!userData?.tenant_id) return { error: "Tenant not found" };
+
+  const { error } = await admin
+    .from("tenants")
+    .update({ require_2fa_for_staff: enabled })
+    .eq("id", userData.tenant_id);
+  if (error) return { error: error.message };
+
+  await logAuditEvent({
+    tenantId: userData.tenant_id,
+    userId: user.id,
+    action: "settings_update",
+    entityType: "tenant",
+    entityId: userData.tenant_id,
+    metadata: {
+      setting: "require_2fa_for_staff",
+      enabled,
+    },
+  });
+
+  revalidatePath("/settings/team");
+  revalidatePath("/settings/two-factor");
+  return { success: true };
+}
