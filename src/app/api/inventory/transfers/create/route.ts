@@ -56,9 +56,21 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       return NextResponse.json({ error: "Source and destination cannot be the same" }, { status: 400 });
     }
 
-    // Verify user has access to source location
+    // Verify user has access to source location.
+    // Canonical contract: NULL = all access (owner/manager); populated array
+    // = restricted subset; matches LocationContext.tsx:69 + TransfersClient.tsx:126.
     const allowedIds = await getUserLocationIds(user.id, userData.tenant_id);
     if (allowedIds !== null && !allowedIds.includes(fromLocationId)) {
+      // QA audit C-04 (2026-05-05): emit telemetry on every transfer denial
+      // so we can spot location-access regressions in Sentry rather than
+      // waiting for another QA pass.
+      logger.error("[inventory/transfers/create] location access denied", {
+        tenant_id: userData.tenant_id,
+        user_id: user.id,
+        route: "/api/inventory/transfers/create",
+        from_location_id: fromLocationId,
+        allowed_location_ids: allowedIds,
+      });
       return NextResponse.json({ error: "You don't have access to the source location" }, { status: 403 });
     }
 
