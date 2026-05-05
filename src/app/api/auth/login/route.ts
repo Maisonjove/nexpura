@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ServerTiming } from "@/lib/server-timing";
 import {
   checkLoginAttempts,
   recordFailedLogin,
@@ -44,6 +45,7 @@ import { withSentryFlush } from "@/lib/sentry-flush";
  * it can prefetch the tenant-scoped dashboard URL.
  */
 export const POST = withSentryFlush(async (request: NextRequest) => {
+  const timing = new ServerTiming();
   try {
     const body = await request.json();
     const { email, password, redirectTo, checkOnly2FA, userId: clientUserId } = body as {
@@ -81,7 +83,9 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || request.headers.get("x-real-ip")
       || "anonymous";
-    const { success: rlOk } = await checkRateLimit(ip, "auth");
+    const { success: rlOk } = await timing.measure("rate_limit", () =>
+      checkRateLimit(ip, "auth"),
+    );
     if (!rlOk) {
       return NextResponse.json(
         { error: "Too many requests. Please try again in a minute." },
@@ -115,10 +119,12 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // onto the response that carries this JSON.
     // ─────────────────────────────────────────────────────────────
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    const { data, error } = await timing.measure("supabase_auth", () =>
+      supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      }),
+    );
 
     if (error || !data.user) {
       // Record the failure server-side so the 5-strike counter is
@@ -166,13 +172,15 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // .single() would have failed for that user — locking him out of
     // the platform. The left-join still returns the row (with
     // tenants=null) and the no-tenant branch below routes him to /admin.
-    const { data: profile } = await admin
-      .from("users")
-      .select(
-        "totp_enabled, tenant_id, role, tenants(slug, name, business_name, business_type, currency, timezone, require_2fa_for_staff)",
-      )
-      .eq("id", data.user.id)
-      .maybeSingle();
+    const { data: profile } = await timing.measure("profile_lookup", async () =>
+      admin
+        .from("users")
+        .select(
+          "totp_enabled, tenant_id, role, tenants(slug, name, business_name, business_type, currency, timezone, require_2fa_for_staff)",
+        )
+        .eq("id", data.user.id)
+        .maybeSingle(),
+    );
 
     const profileTyped = profile as {
       totp_enabled?: boolean;
@@ -194,7 +202,8 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
     // back to its DB path. We set the cookie on BOTH the requires2FA
     // path and the success path so a subsequent /verify-2fa → /dashboard
     // hit reads it without a round-trip.
-    const shellCookieValue = await signShellCookie({
+    const shellCookieValue = await timing.measure("shell_cookie_sign", () =>
+      signShellCookie({
       userId: data.user.id,
       tenantId: profileTyped?.tenant_id ?? "",
       firstName: profileTyped?.tenants?.business_name || profileTyped?.tenants?.name || "there",
@@ -209,17 +218,23 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       role: profileTyped?.role ?? undefined,
       tenantSlug: profileTyped?.tenants?.slug ?? null,
       totpEnabled: profileTyped?.totp_enabled === true,
-    }).catch(() => null);
+      }).catch(() => null),
+    );
 
     function attachShellCookie(res: NextResponse): NextResponse {
-      if (!shellCookieValue) return res;
-      res.cookies.set(SHELL_COOKIE_NAME, shellCookieValue, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: SHELL_COOKIE_MAX_AGE,
-      });
+      if (shellCookieValue) {
+        res.cookies.set(SHELL_COOKIE_NAME, shellCookieValue, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: SHELL_COOKIE_MAX_AGE,
+        });
+      }
+      // Stamp Server-Timing on every response so even early-return
+      // paths surface the timing breakdown.
+      const value = timing.toHeader();
+      if (value) res.headers.set("Server-Timing", value);
       return res;
     }
 

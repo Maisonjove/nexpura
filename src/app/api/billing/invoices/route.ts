@@ -4,30 +4,57 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import Stripe from "stripe";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ServerTiming } from "@/lib/server-timing";
 import { withSentryFlush } from "@/lib/sentry-flush";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2026-02-25.clover" });
 
+function withTimingHeader(timing: ServerTiming, res: NextResponse): NextResponse {
+  const value = timing.toHeader();
+  if (value) res.headers.set("Server-Timing", value);
+  return res;
+}
+
 export const GET = withSentryFlush(async (request: NextRequest) => {
+  const timing = new ServerTiming();
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
+  const { success } = await timing.measure("rate_limit", () =>
+    checkRateLimit(ip, "api"),
+  );
   if (!success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    return withTimingHeader(
+      timing,
+      NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 }),
+    );
   }
 
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { data: { user } } = await timing.measure("auth_getuser", () =>
+      supabase.auth.getUser(),
+    );
+    if (!user) {
+      return withTimingHeader(
+        timing,
+        NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      );
+    }
 
     const admin = createAdminClient();
-    const { data: userData } = await admin
-      .from("users")
-      .select("tenant_id, role")
-      .eq("id", user.id)
-      .single();
+    const { data: userData } = await timing.measure("user_lookup", async () =>
+      admin
+        .from("users")
+        .select("tenant_id, role")
+        .eq("id", user.id)
+        .single(),
+    );
 
-    if (!userData?.tenant_id) return NextResponse.json({ error: "No tenant" }, { status: 401 });
+    if (!userData?.tenant_id) {
+      return withTimingHeader(
+        timing,
+        NextResponse.json({ error: "No tenant" }, { status: 401 }),
+      );
+    }
 
     // RBAC: invoices expose tenant billing history (amounts paid, hosted
     // PDF URLs) — same blast radius as the sibling /api/billing/portal
@@ -41,26 +68,33 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       // Previous "Owner only" was correct but terse; lift the more
       // informative phrasing rather than divide the same denial into
       // two flavours.
-      return NextResponse.json(
-        { error: "Only the tenant owner can manage billing." },
-        { status: 403 },
+      return withTimingHeader(
+        timing,
+        NextResponse.json(
+          { error: "Only the tenant owner can manage billing." },
+          { status: 403 },
+        ),
       );
     }
 
-    const { data: sub } = await admin
-      .from("subscriptions")
-      .select("stripe_customer_id")
-      .eq("tenant_id", userData.tenant_id)
-      .single();
+    const { data: sub } = await timing.measure("sub_lookup", async () =>
+      admin
+        .from("subscriptions")
+        .select("stripe_customer_id")
+        .eq("tenant_id", userData.tenant_id)
+        .single(),
+    );
 
     if (!sub?.stripe_customer_id) {
-      return NextResponse.json({ invoices: [] });
+      return withTimingHeader(timing, NextResponse.json({ invoices: [] }));
     }
 
-    const invoices = await stripe.invoices.list({
-      customer: sub.stripe_customer_id,
-      limit: 24,
-    });
+    const invoices = await timing.measure("stripe_invoices_list", () =>
+      stripe.invoices.list({
+        customer: sub.stripe_customer_id,
+        limit: 24,
+      }),
+    );
 
     const result = invoices.data.map((inv) => ({
       id: inv.id,
@@ -76,9 +110,12 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
       number: inv.number,
     }));
 
-    return NextResponse.json({ invoices: result });
+    return withTimingHeader(timing, NextResponse.json({ invoices: result }));
   } catch (err) {
     logger.error("Billing invoices error:", err);
-    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 });
+    return withTimingHeader(
+      timing,
+      NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 }),
+    );
   }
 });
