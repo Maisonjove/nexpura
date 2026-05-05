@@ -140,7 +140,11 @@ async function findAffected(): Promise<AffectedRow[]> {
   return out;
 }
 
-async function backfill(row: AffectedRow): Promise<{ inserted: boolean; rowId: string | null; error?: string }> {
+type BackfillOutcome = "inserted" | "already_present" | "dry_run_planned";
+
+async function backfill(
+  row: AffectedRow,
+): Promise<{ outcome: BackfillOutcome; rowId: string | null; error?: string }> {
   // Re-check existence at insert-time as a small race guard; a
   // concurrent invite-accept write is unlikely on prod for the
   // affected accounts but the cost is one round-trip.
@@ -151,11 +155,20 @@ async function backfill(row: AffectedRow): Promise<{ inserted: boolean; rowId: s
     .eq("user_id", row.user_id)
     .maybeSingle();
   if (existing?.id) {
-    return { inserted: false, rowId: existing.id };
+    return { outcome: "already_present", rowId: existing.id };
   }
 
   if (DRY_RUN) {
-    return { inserted: false, rowId: null };
+    // Existence check confirmed NO row — report this honestly as a
+    // planned insert rather than "already exists". Pre-fix the script
+    // returned `{inserted: false, rowId: null}` here and main()
+    // collapsed it into "row already exists (dry-run)" — the same
+    // status it printed for genuine duplicates. That hid the
+    // 2026-05-05 wave-4 backfill: dry-run reported 10 skipped /
+    // already-present, but in fact 10 needed inserts. Real WRITE-mode
+    // run inserted all 10 with provenance source
+    // `c02_backfill_2026_05_05`. Don't repeat the trick.
+    return { outcome: "dry_run_planned", rowId: null };
   }
 
   const { data: inserted, error } = await admin
@@ -176,9 +189,9 @@ async function backfill(row: AffectedRow): Promise<{ inserted: boolean; rowId: s
     .single();
 
   if (error || !inserted?.id) {
-    return { inserted: false, rowId: null, error: error?.message ?? "unknown" };
+    return { outcome: "already_present", rowId: null, error: error?.message ?? "unknown" };
   }
-  return { inserted: true, rowId: inserted.id };
+  return { outcome: "inserted", rowId: inserted.id };
 }
 
 async function main() {
@@ -199,22 +212,34 @@ async function main() {
 
   let inserted = 0;
   let alreadyPresent = 0;
+  let plannedDry = 0;
   let failed = 0;
   for (const r of affected) {
     const result = await backfill(r);
     if (result.error) {
       failed += 1;
       console.error(`[backfill-c02] FAIL ${r.user_email} → ${r.tenant_id}: ${result.error}`);
-    } else if (result.inserted) {
+    } else if (result.outcome === "inserted") {
       inserted += 1;
       console.log(`[backfill-c02] inserted row=${result.rowId} for ${r.user_email} → ${r.tenant_id}`);
+    } else if (result.outcome === "dry_run_planned") {
+      plannedDry += 1;
+      console.log(`[backfill-c02] WOULD INSERT ${r.user_email} → ${r.tenant_id} (dry-run; existence check confirmed missing)`);
     } else {
       alreadyPresent += 1;
-      console.log(`[backfill-c02] skipped ${r.user_email} → ${r.tenant_id}: row already exists (${result.rowId ?? "dry-run"})`);
+      console.log(`[backfill-c02] skipped ${r.user_email} → ${r.tenant_id}: row already exists id=${result.rowId}`);
     }
   }
 
-  console.log(`\n[backfill-c02] summary: inserted=${inserted} skipped=${alreadyPresent} failed=${failed} total=${affected.length}`);
+  if (DRY_RUN) {
+    console.log(
+      `\n[backfill-c02] DRY-RUN summary: would_insert=${plannedDry} already_present=${alreadyPresent} total=${affected.length}`,
+    );
+  } else {
+    console.log(
+      `\n[backfill-c02] summary: inserted=${inserted} already_present=${alreadyPresent} failed=${failed} total=${affected.length}`,
+    );
+  }
   if (failed > 0) process.exit(2);
 }
 
