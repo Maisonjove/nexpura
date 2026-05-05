@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { archiveCustomer, addCustomerNote, removeFromWishlist, notifyWishlistItem } from "../actions";
+import { archiveCustomer, addCustomerNote, removeFromWishlist, notifyWishlistItem, sendCustomerEmail } from "../actions";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -199,6 +199,45 @@ export default function CustomerDetailClient({
   const [notes, setNotes] = useState(customer.notes || "");
   const [openComm, setOpenComm] = useState<CustomerCommunication | null>(null);
 
+  // M-06: 1:1 email send modal state.
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<
+    | { kind: "idle" }
+    | { kind: "sent"; sentTo: string; at: number }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  async function handleSendEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailResult({ kind: "idle" });
+    if (!emailSubject.trim() || !emailBody.trim()) {
+      setEmailResult({ kind: "error", message: "Subject and body are required." });
+      return;
+    }
+    setEmailSending(true);
+    const result = await sendCustomerEmail(customer.id, emailSubject.trim(), emailBody);
+    setEmailSending(false);
+    if (result.error) {
+      setEmailResult({ kind: "error", message: result.error });
+    } else if (result.success && result.sentTo) {
+      setEmailResult({ kind: "sent", sentTo: result.sentTo, at: Date.now() });
+      // Clear the compose fields after a confirmed send.
+      setEmailSubject("");
+      setEmailBody("");
+      router.refresh();
+    } else {
+      // Defensive: handler returned neither error nor success+sentTo.
+      // Mirror the L-06 contract — never silently report "Sent".
+      setEmailResult({
+        kind: "error",
+        message: "Email provider returned an unexpected response. Try again.",
+      });
+    }
+  }
+
   async function handleArchive() {
     startTransition(async () => {
       await archiveCustomer(customer.id);
@@ -253,8 +292,23 @@ export default function CustomerDetailClient({
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-4 text-sm text-stone-500 mb-4">
-              {customer.email && <span className="flex items-center gap-1.5">✉ {customer.email}</span>}
+            <div className="flex flex-wrap gap-4 text-sm text-stone-500 mb-4 items-center">
+              {customer.email && (
+                <span className="flex items-center gap-1.5">
+                  ✉ {customer.email}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailResult({ kind: "idle" });
+                      setShowEmailModal(true);
+                    }}
+                    className="ml-1 px-2 py-0.5 text-[11px] font-medium border border-stone-300 text-stone-700 rounded-md hover:border-nexpura-bronze hover:text-nexpura-bronze transition-colors"
+                    aria-label={`Send email to ${customer.full_name ?? customer.email}`}
+                  >
+                    Send email
+                  </button>
+                </span>
+              )}
               {(customer.mobile || customer.phone) && <span className="flex items-center gap-1.5">📱 {customer.mobile || customer.phone}</span>}
               <span className="flex items-center gap-1.5">📅 Customer since {customer.customer_since ? format(new Date(customer.customer_since), "MMM yyyy") : "—"}</span>
             </div>
@@ -1020,6 +1074,95 @@ export default function CustomerDetailClient({
                 {isPending ? "Archiving..." : "Archive"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* M-06 — 1:1 customer email modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => {
+              if (!emailSending) setShowEmailModal(false);
+            }}
+          />
+          <div className="relative bg-white rounded-2xl border border-stone-200 shadow-xl w-full max-w-lg p-6">
+            <h3 className="font-semibold text-lg text-stone-900 mb-1">
+              Send email to {customer.full_name ?? "customer"}
+            </h3>
+            <p className="text-sm text-stone-500 mb-5">
+              Goes to <span className="font-mono text-stone-700">{customer.email ?? "—"}</span>.
+              Recorded in this customer&apos;s communications panel.
+            </p>
+            <form onSubmit={handleSendEmail} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Subject <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  maxLength={200}
+                  disabled={emailSending}
+                  placeholder="Following up on your bespoke piece"
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none disabled:bg-stone-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  Message <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  rows={8}
+                  maxLength={50_000}
+                  disabled={emailSending}
+                  placeholder="Hi there,&#10;&#10;Just wanted to let you know..."
+                  className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none resize-y disabled:bg-stone-50"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Plain text — line breaks preserved. Sent from your tenant&apos;s configured From address.
+                </p>
+              </div>
+
+              {emailResult.kind === "error" && (
+                <p
+                  role="alert"
+                  className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+                >
+                  Send failed: {emailResult.message}
+                </p>
+              )}
+              {emailResult.kind === "sent" && (
+                <p
+                  role="status"
+                  className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"
+                >
+                  Sent to <span className="font-mono">{emailResult.sentTo}</span>.
+                </p>
+              )}
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  disabled={emailSending}
+                  className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={emailSending || !emailSubject.trim() || !emailBody.trim()}
+                  className="px-4 py-2 text-sm font-medium bg-nexpura-bronze text-white rounded-xl hover:opacity-90 disabled:opacity-50"
+                >
+                  {emailSending ? "Sending…" : "Send email"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -10,8 +10,9 @@ import { logAuditEvent } from "@/lib/audit";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { customerCreateSchema } from "@/lib/schemas/customers";
-import { requireAuth } from "@/lib/auth-context";
+import { requireAuth, requireRole } from "@/lib/auth-context";
 import { buildEncryptedCustomerPiiUpdate, decryptCustomerPii } from "@/lib/customer-pii";
+import { sendMarketingEmail } from "@/lib/marketing/email";
 
 import { flushSentry } from "@/lib/sentry-flush";
 /**
@@ -513,3 +514,100 @@ export async function notifyWishlistItem(
   }
 }
 
+
+/**
+ * M-06 (desktop-Opus): 1:1 ad-hoc email send to a single customer
+ * from /customers/[id]. Sits alongside marketing/bulk-email's
+ * sendBulkEmail/sendTestEmail — the same underlying sendMarketingEmail
+ * helper handles the actual Resend send + per-tenant From config +
+ * email_sends ledger row.
+ *
+ * What this is NOT:
+ *   - Not a bulk-send entrypoint — explicitly single-recipient.
+ *   - Not marketing-segmented — no campaignId, no segment match;
+ *     this email won't appear under a campaign's send-history.
+ *   - Not transactional (receipts, repair-ready) — those have
+ *     their own fixed-template paths.
+ *
+ * What this IS:
+ *   - The owner/manager typing a one-off email to a specific
+ *     customer (e.g. "Your bespoke piece is ready for collection,
+ *     here's a photo" / personal follow-up after a high-value
+ *     sale). Ledger row records the send so it appears in the
+ *     customer's communications panel below.
+ *
+ * Auth: owner/manager only — same gate as marketing/bulk-email.
+ * Rationale: a 1:1 email channel that bypasses the campaign UI
+ * could become a side-channel for unbranded/uncompliant outreach
+ * if junior staff had it. Owners/managers are accountable for
+ * brand voice + opt-out compliance.
+ */
+export async function sendCustomerEmail(
+  customerId: string,
+  subject: string,
+  body: string,
+): Promise<{ success?: boolean; sentTo?: string; error?: string }> {
+  try {
+    await requireRole("owner", "manager");
+  } catch {
+    return { error: "Only owner or manager can send 1:1 customer emails." };
+  }
+
+  if (!subject?.trim() || !body?.trim()) {
+    return { error: "Subject and body are required." };
+  }
+  if (subject.length > 200) {
+    return { error: "Subject is too long (max 200 chars)." };
+  }
+  if (body.length > 50_000) {
+    return { error: "Body is too long (max 50,000 chars)." };
+  }
+
+  const auth = await requireAuth();
+  const admin = createAdminClient();
+
+  // Pull the customer to authenticate the recipient — never trust
+  // a client-supplied email. Cross-tenant safety: scope by
+  // auth.tenantId.
+  const { data: customer } = await admin
+    .from("customers")
+    .select("id, email, full_name, tenant_id, email_status, email_opted_out")
+    .eq("id", customerId)
+    .eq("tenant_id", auth.tenantId)
+    .maybeSingle();
+
+  if (!customer) return { error: "Customer not found." };
+  if (!customer.email) return { error: "This customer has no email address on file." };
+  if (customer.email_status === "bounced") {
+    return { error: "This customer's email has bounced previously — they can't receive mail." };
+  }
+  if (customer.email_status === "complained") {
+    return { error: "This customer has marked emails as spam. Update their record before retrying." };
+  }
+  if (customer.email_opted_out) {
+    return {
+      error:
+        "This customer has opted out of marketing emails. For transactional follow-up, contact them directly.",
+    };
+  }
+
+  const result = await sendMarketingEmail({
+    tenantId: auth.tenantId,
+    to: customer.email,
+    toName: customer.full_name ?? undefined,
+    subject,
+    body,
+    customerId: customer.id,
+    // No campaignId — keeps this send out of campaign analytics
+    // but still creates the per-customer ledger row.
+  });
+
+  if (!result.success) {
+    return { error: result.error ?? "Send failed." };
+  }
+
+  // Refresh the communications panel + the customer detail server
+  // component so the new ledger row renders without a hard nav.
+  revalidatePath(`/customers/${customerId}`);
+  return { success: true, sentTo: customer.email };
+}
