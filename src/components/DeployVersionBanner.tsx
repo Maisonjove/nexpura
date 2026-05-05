@@ -61,10 +61,70 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/nextjs';
+import { getBuildVersion, hasBuildVersion } from '@/lib/build-version';
+import {
+  isAnyReloadBlocked,
+  onReloadBlockersChange,
+  getReloadBlockers,
+} from '@/lib/reload-blockers';
 
-const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? '';
+// Single source of truth (per QA agent C-06 ask): import from
+// lib/build-version rather than reading process.env directly.
+const BUILD_ID = getBuildVersion();
 const IS_PROD = process.env.NODE_ENV === 'production';
 const RELOAD_DELAY_MS = 2000;
+
+// Infinite-loop guard (per QA agent C-06 ask): if we've reloaded N
+// times in M seconds, stop reloading. Lands the user on a UI that
+// surfaces the issue rather than silently looping. Reset on each
+// successful first-paint with a non-skewed response.
+const RELOAD_RETRY_COUNTER_KEY = 'nx-c06-reload-retries';
+const RELOAD_RETRY_WINDOW_MS = 5 * 60 * 1000; // 5 min
+const RELOAD_RETRY_MAX = 3;
+
+interface RetryState {
+  count: number;
+  firstAt: number;
+}
+
+function readRetryState(): RetryState {
+  try {
+    const raw = sessionStorage.getItem(RELOAD_RETRY_COUNTER_KEY);
+    if (!raw) return { count: 0, firstAt: 0 };
+    const parsed = JSON.parse(raw) as Partial<RetryState>;
+    if (
+      typeof parsed.count === 'number' &&
+      typeof parsed.firstAt === 'number'
+    ) {
+      // Window expired → reset to fresh state
+      if (Date.now() - parsed.firstAt > RELOAD_RETRY_WINDOW_MS) {
+        return { count: 0, firstAt: 0 };
+      }
+      return parsed as RetryState;
+    }
+    return { count: 0, firstAt: 0 };
+  } catch {
+    return { count: 0, firstAt: 0 };
+  }
+}
+
+function recordRetryAttempt(): RetryState {
+  try {
+    const prev = readRetryState();
+    const next: RetryState = {
+      count: prev.count + 1,
+      firstAt: prev.firstAt || Date.now(),
+    };
+    sessionStorage.setItem(RELOAD_RETRY_COUNTER_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return { count: 1, firstAt: Date.now() };
+  }
+}
+
+function clearRetryState(): void {
+  try { sessionStorage.removeItem(RELOAD_RETRY_COUNTER_KEY); } catch { /* ignore */ }
+}
 
 // Module-level latch — once a skew is detected, suppress further
 // detections in the same page session so we don't fire telemetry for
@@ -136,6 +196,8 @@ interface UseDeployMismatchDetectionResult {
   mismatched: boolean;
   serverBuildId: string | null;
   reload: () => void;
+  /** True after the infinite-loop guard has tripped — UI should surface "couldn't recover, hard-refresh". */
+  bailedOut: boolean;
 }
 
 /**
@@ -152,15 +214,68 @@ export function useDeployMismatchDetection(): UseDeployMismatchDetectionResult {
   const [serverBuildId, setServerBuildId] = useState<string | null>(null);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [bailedOut, setBailedOut] = useState(false);
+
   const triggerReload = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.location.reload();
+    if (typeof window === 'undefined') return;
+
+    // Infinite-loop guard: if we've already reloaded the configured
+    // number of times in the configured window, surface the failure
+    // to the user instead of looping. This catches the case where
+    // CDN edge cache is stuck on stale chunks even after our SW has
+    // moved on, or where the new deploy is itself broken in a way
+    // that re-triggers the skew detection.
+    const retry = recordRetryAttempt();
+    if (retry.count > RELOAD_RETRY_MAX) {
+      try {
+        Sentry.captureMessage('deploy_id_skew_reload_giveup', {
+          level: 'warning',
+          tags: {
+            route: typeof location !== 'undefined' ? location.pathname : 'unknown',
+          },
+          extra: { retry_count: retry.count, retry_window_ms: RELOAD_RETRY_WINDOW_MS },
+        });
+      } catch { /* never block recovery on telemetry */ }
+      setBailedOut(true);
+      return;
     }
+
+    // POS mid-sale (and any other un-savable in-progress state) idle
+    // gating: defer reload while a reload-blocker is registered. As
+    // soon as the registry empties, the subscription fires and we
+    // reload. If the user never clears their cart, the reload never
+    // fires — they'll see the banner persist, can dismiss/reload
+    // manually if needed.
+    if (isAnyReloadBlocked()) {
+      try {
+        Sentry.addBreadcrumb({
+          category: 'deploy-skew',
+          level: 'info',
+          message: 'reload_deferred_blocker_registered',
+          data: { blockers: getReloadBlockers() },
+        });
+      } catch { /* ignore */ }
+
+      const unsubscribe = onReloadBlockersChange(() => {
+        if (!isAnyReloadBlocked()) {
+          unsubscribe();
+          window.location.reload();
+        }
+      });
+      return;
+    }
+
+    window.location.reload();
   }, []);
 
   useEffect(() => {
     if (!IS_PROD) return;
-    if (!BUILD_ID) return;
+    if (!hasBuildVersion()) return;
+
+    // Successful first-paint with no skew yet → reset retry counter so
+    // legitimate future reloads start fresh. Only reset if we're not
+    // currently in-flight on a skew detection.
+    if (!skewDetected) clearRetryState();
 
     const teardown = installDeployMismatchInterceptor({
       clientBuildId: BUILD_ID,
@@ -210,7 +325,7 @@ export function useDeployMismatchDetection(): UseDeployMismatchDetectionResult {
     };
   }, [triggerReload]);
 
-  return { mismatched, serverBuildId, reload: triggerReload };
+  return { mismatched, serverBuildId, reload: triggerReload, bailedOut };
 }
 
 /**
