@@ -12,7 +12,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createCalendarEvent, updateCalendarEvent, refreshGoogleToken } from "@/lib/google-calendar";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { withSentryFlush } from "@/lib/sentry-flush";
+import { withSentryFlush, flushSentry } from "@/lib/sentry-flush";
 
 export const POST = withSentryFlush(async (req: NextRequest) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
@@ -131,9 +131,19 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
       message: appointment.google_calendar_event_id ? "Event updated" : "Event created",
     });
   } catch (err) {
-    logger.error("[google-calendar/push]", err);
+    // Cleanup #29: never echo err.message back to the client. Google's
+    // SDK errors carry service-account names, project IDs, raw OAuth
+    // scopes, and occasionally bearer-token fragments in the message
+    // body. Log the full error server-side (Sentry + structured log),
+    // flush it before returning so the Lambda doesn't freeze with the
+    // event still buffered, and surface a generic copy to the caller.
+    // 4xx vs 5xx discrimination above is preserved by the explicit
+    // NextResponse.json status codes — only this terminal catch is the
+    // 500 fallthrough.
+    logger.error("[google-calendar/push] failed", { error: err });
+    await flushSentry();
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to push to calendar" },
+      { error: "Calendar sync failed" },
       { status: 500 }
     );
   }

@@ -36,7 +36,15 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
     // the role check, so a staff user with a session could fetch the
     // tenant's invoice history. Mirror the sibling shape exactly.
     if (userData.role !== "owner") {
-      return NextResponse.json({ error: "Owner only" }, { status: 403 });
+      // Cleanup #33: copy parity with sibling /api/billing/portal so
+      // the UI surfaces identical error text on a same-shape RBAC fail.
+      // Previous "Owner only" was correct but terse; lift the more
+      // informative phrasing rather than divide the same denial into
+      // two flavours.
+      return NextResponse.json(
+        { error: "Only the tenant owner can manage billing." },
+        { status: 403 },
+      );
     }
 
     const { data: sub } = await admin
