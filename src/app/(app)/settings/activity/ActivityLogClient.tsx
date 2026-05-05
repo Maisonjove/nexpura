@@ -7,10 +7,12 @@ import {
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   FunnelIcon,
   XMarkIcon,
   ClockIcon,
 } from "@heroicons/react/24/outline";
+import AuditDiffView from "@/components/AuditDiffView";
 
 interface AuditLog {
   id: string;
@@ -340,6 +342,25 @@ export default function ActivityLogClient({
                             <div key={i}>{change}</div>
                           ))}
                         </div>
+                      )}
+                      {/* Section 4 #8: full diff view, expandable.
+                          The summary above shows up to 3 changes
+                          truncated; the full view renders ALL
+                          changes with red/green diff highlighting
+                          + collapsible unchanged fields. */}
+                      {(log.old_data || log.new_data) && (
+                        <details className="mt-3 group/diff">
+                          <summary className="text-xs text-stone-500 hover:text-stone-900 cursor-pointer inline-flex items-center gap-1.5 transition-colors">
+                            <ChevronDownIcon className="w-3.5 h-3.5 transition-transform group-open/diff:rotate-180" />
+                            Show full diff
+                          </summary>
+                          <div className="mt-3 bg-stone-50 border border-stone-100 rounded-lg p-4">
+                            <AuditDiffView
+                              oldData={log.old_data}
+                              newData={log.new_data}
+                            />
+                          </div>
+                        </details>
                       )}
                     </div>
                   </div>
