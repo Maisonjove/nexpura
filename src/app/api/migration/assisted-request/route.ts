@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ request: data, success: true });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    // P2-A Item 9: log full err, return generic message.
+    reportServerError("migration/assisted-request:POST", err);
+    return NextResponse.json({ error: "Assisted-migration request failed" }, { status: 500 });
   }
 }

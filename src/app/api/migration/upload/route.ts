@@ -262,7 +262,10 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
     return NextResponse.json({ file: fileRecord, success: true });
   } catch (err: unknown) {
+    // P2-A Item 9: log full err, return generic message — storage / SQL
+    // identifiers from supabase-js error strings shouldn't reach the
+    // operator's browser.
     logger.error('Upload error:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Migration upload failed" }, { status: 500 });
   }
 });

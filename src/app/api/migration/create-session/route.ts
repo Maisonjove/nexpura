@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { migrationCreateSessionSchema } from '@/lib/schemas';
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportServerError } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ sessionId: session.id, session });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    // P2-A Item 9: log full err, return generic message.
+    reportServerError("migration/create-session:POST", err);
+    return NextResponse.json({ error: "Migration session creation failed" }, { status: 500 });
   }
 }

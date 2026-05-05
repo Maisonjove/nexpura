@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from "@/lib/rate-limit";
 import { withSentryFlush } from "@/lib/sentry-flush";
+import { reportServerError } from "@/lib/logger";
 
 /**
  * Launch-QA W5-CRIT-002: the GET and POST handlers previously looked up a
@@ -55,7 +56,9 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
 
     return NextResponse.json({ job });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    // P2-A Item 9: log full err, return generic message.
+    reportServerError("migration/job-status:GET", err);
+    return NextResponse.json({ error: "Migration job lookup failed" }, { status: 500 });
   }
 });
 
@@ -105,6 +108,8 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    // P2-A Item 9: log full err, return generic message.
+    reportServerError("migration/job-status:POST", err);
+    return NextResponse.json({ error: "Migration job action failed" }, { status: 500 });
   }
 });

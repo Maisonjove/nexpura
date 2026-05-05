@@ -209,7 +209,6 @@ Return JSON with:
     });
   } catch (err) {
     logger.error('Classification error:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     // Degrade gracefully
     try {
       const { fileId } = await req.json().catch(() => ({} as { fileId?: string }));
@@ -233,6 +232,14 @@ Return JSON with:
         }
       }
     } catch {}
-    return NextResponse.json({ error: errorMessage, status: 'needs_review' }, { status: 200 });
+    // P2-A Item 9 + 10: preserve the unusual { error, status } shape
+    // because the wizard UI is contract-bound to it (a 200 with status:
+    // 'needs_review' triggers the manual-review tab). Replace the raw
+    // err.message echo with a generic operator-facing string — internal
+    // OpenAI / SDK error text shouldn't leak.
+    return NextResponse.json(
+      { error: 'Classification failed — please review manually', status: 'needs_review' },
+      { status: 200 },
+    );
   }
 });
