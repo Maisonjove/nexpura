@@ -47,28 +47,48 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
   const router = useRouter();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  // M-07: initial rule_type matches the first dropdown option.
+  // Pre-fix the initial state was "custom" but the dropdown didn't
+  // expose a "custom" option, so the select rendered "new" while
+  // the state stayed "custom" — submit-without-changing produced
+  // a segment with `rules: { type: "custom" }` that matched no
+  // customers. Setting initial state to "new" keeps the visible
+  // select and the state in sync.
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    rule_type: "custom" as string,
+    rule_type: "new" as string,
     rule_value: "",
   });
+  const [createError, setCreateError] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!formData.name) return;
+    setCreateError(null);
+    if (!formData.name.trim()) {
+      setCreateError("Segment name is required.");
+      return;
+    }
+    // M-07: rule-value is required for the parameterised types.
+    // The 'repair' type is a flag with no qualifier — accept empty.
+    const requiresValue = ["new", "lapsed", "high_value", "vip"].includes(formData.rule_type);
+    const numericValue = formData.rule_value ? parseInt(formData.rule_value, 10) : NaN;
+    if (requiresValue && (!Number.isFinite(numericValue) || numericValue <= 0)) {
+      setCreateError("Enter a positive value for the segment rule.");
+      return;
+    }
 
     setLoading("create");
 
     const rules: Record<string, unknown> = { type: formData.rule_type };
     if (formData.rule_type === "new") {
-      rules.days = parseInt(formData.rule_value) || 30;
+      rules.days = numericValue;
     } else if (formData.rule_type === "lapsed") {
-      rules.months = parseInt(formData.rule_value) || 6;
+      rules.months = numericValue;
     } else if (formData.rule_type === "high_value") {
-      rules.amount = parseInt(formData.rule_value) || 1000;
+      rules.amount = numericValue;
     } else if (formData.rule_type === "vip") {
-      rules.percentile = parseInt(formData.rule_value) || 10;
+      rules.percentile = numericValue;
     }
 
     const result = await createSegment({
@@ -78,10 +98,10 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
     });
 
     if (result.error) {
-      alert(result.error);
+      setCreateError(result.error);
     } else {
       setShowCreateModal(false);
-      setFormData({ name: "", description: "", rule_type: "custom", rule_value: "" });
+      setFormData({ name: "", description: "", rule_type: "new", rule_value: "" });
     }
 
     setLoading(null);
@@ -366,6 +386,16 @@ export default function SegmentsClient({ segments, tenantId }: Props) {
                     className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                   />
                 </div>
+              )}
+
+              {/* M-07 inline validation surface. */}
+              {createError && (
+                <p
+                  role="alert"
+                  className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+                >
+                  {createError}
+                </p>
               )}
 
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-stone-200 -mx-6 px-6 -mb-6 pb-6">
