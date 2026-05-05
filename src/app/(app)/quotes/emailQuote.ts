@@ -27,9 +27,23 @@ function fmtDate(d: string | null | undefined): string {
   }
 }
 
+/**
+ * Section 4 #4 (test-send/dry-run): when `options.sendToOperator` is
+ * true the rendered email is sent to the authenticated user's
+ * inbox instead of the customer. Subject prefixed `[TEST]` so the
+ * operator can tell it apart from real customer mail. Used by the
+ * /quotes/[id] "Send test to me" button — operators preview the
+ * email-as-customer-sees-it (subject, From, body, footer) before
+ * sending the real thing.
+ */
+export interface EmailQuoteOptions {
+  sendToOperator?: boolean;
+}
+
 export async function emailQuote(
-  quoteId: string
-): Promise<{ success: boolean; error?: string }> {
+  quoteId: string,
+  options: EmailQuoteOptions = {},
+): Promise<{ success: boolean; sentTo?: string; error?: string }> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +85,19 @@ export async function emailQuote(
       : quote.customers;
 
     const customerEmail = customerRaw?.email ?? null;
-    if (!customerEmail) return { success: false, error: "No customer email on file" };
+
+    // Test-send branch — route to operator's inbox, never customer.
+    // Body render below is unchanged so it's pixel-identical to
+    // what the customer would receive.
+    const recipient = options.sendToOperator ? user.email ?? null : customerEmail;
+    if (!recipient) {
+      return {
+        success: false,
+        error: options.sendToOperator
+          ? "Your account has no email on file. Sign out and sign in again."
+          : "No customer email on file",
+      };
+    }
 
     const customerName = customerRaw?.full_name || "Valued Customer";
     const quoteNumber = quote.quote_number || quote.id.slice(0, 8).toUpperCase();
@@ -184,17 +210,18 @@ export async function emailQuote(
       type: "quotes",
     });
 
+    const subjectBase = `Quote ${quoteNumber} from ${businessName}`;
     const { error: sendError } = await resend.emails.send({
       from: emailConfig.from,
-      to: customerEmail,
+      to: recipient,
       replyTo: emailConfig.replyTo || (tenant?.email ? tenant.email : undefined),
-      subject: `Quote ${quoteNumber} from ${businessName}`,
+      subject: options.sendToOperator ? `[TEST] ${subjectBase}` : subjectBase,
       html: htmlBody,
     });
 
     if (sendError) return { success: false, error: sendError.message };
 
-    return { success: true };
+    return { success: true, sentTo: recipient };
   } catch (err) {
     logger.error("emailQuote error:", err);
     return {
