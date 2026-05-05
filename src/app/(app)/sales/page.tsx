@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import logger from "@/lib/logger";
 import { flushSentry } from "@/lib/sentry-flush";
-import { getSalesPage, SALES_LIST_PAGE_SIZE } from "./sales-actions";
+import { getSalesPage } from "./sales-actions";
+import { SALES_LIST_PAGE_SIZE } from "./sales-types";
 import SalesHubClient from "./SalesHubClient";
 
 export const metadata = { title: "Sales — Nexpura" };

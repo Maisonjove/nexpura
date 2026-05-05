@@ -7,6 +7,28 @@ import { resolveReadLocationScope } from "@/lib/location-read-scope";
 import logger from "@/lib/logger";
 import { flushSentry } from "@/lib/sentry-flush";
 
+// Types + constants live in sales-types.ts — Next.js's "use server"
+// transform forbids non-async exports in this file (caught on the
+// 2026-05-05 wave-2 deploy when SALES_LIST_PAGE_SIZE was inlined here
+// and the bundler emitted "module has no exports at all"). See
+// CONTRIBUTING.md §14.
+//
+// Type-only re-exports are bundler-safe (the lint rule
+// `local/no-server-action-reexport` explicitly exempts them) so callers
+// that import types from this module keep working without churn.
+export type {
+  SaleWithLocation,
+  SalesListPage,
+  GetSalesOptions,
+} from "./sales-types";
+import {
+  SALES_LIST_PAGE_SIZE,
+  SALES_LIST_MAX_PAGE_SIZE,
+  type SaleWithLocation,
+  type SalesListPage,
+  type GetSalesOptions,
+} from "./sales-types";
+
 /**
  * Fast tenant ID resolution from middleware-set headers.
  * Eliminates supabase.auth.getUser() + DB query (~70-150ms savings per call).
@@ -19,25 +41,11 @@ async function getTenantId(): Promise<{ tenantId: string; userId: string | null 
   return { tenantId, userId };
 }
 
-export interface SaleWithLocation {
-  id: string;
-  sale_number: string;
-  customer_name: string | null;
-  customer_email: string | null;
-  status: string;
-  payment_method: string | null;
-  total: number;
-  amount_paid: number | null;
-  sale_date: string;
-  created_at: string;
-  location_id: string | null;
-  locationName?: string;
-}
-
 /**
- * Cursor-paginated sales response. The hub uses the first page (50 rows);
- * "View all" / future filter UI loads further pages by calling getSales
- * with the returned `nextCursor`.
+ * Cursor-paginated sales response — see SalesListPage type in
+ * sales-types.ts. The hub uses the first page (50 rows); "View all" /
+ * future filter UI loads further pages by calling getSales with the
+ * returned `nextCursor`.
  *
  * C-02 (post-audit-batch QA): the previous shape returned `SaleWithLocation[]`
  * with no cursor and no error channel. Audit said:
@@ -57,21 +65,6 @@ export interface SaleWithLocation {
  * route, payload_hash, and surface a typed error so the page's Suspense
  * boundary renders the ErrorBoundary fallback instead of fake-empty UI.
  */
-export interface SalesListPage {
-  sales: SaleWithLocation[];
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
-export interface GetSalesOptions {
-  /** Cursor: ISO timestamp of the last seen `created_at`. Pass null/undefined for first page. */
-  cursor?: string | null;
-  /** Page size. Defaults to 50. Capped at 200 to bound payload. */
-  limit?: number;
-}
-
-export const SALES_LIST_PAGE_SIZE = 50;
-const SALES_LIST_MAX_PAGE_SIZE = 200;
 
 function payloadHash(value: unknown): string {
   return createHash("sha256")
