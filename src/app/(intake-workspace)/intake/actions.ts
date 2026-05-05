@@ -11,6 +11,8 @@ import { resolveLocationForCreate, LOCATION_REQUIRED_MESSAGE } from "@/lib/activ
 import { assertTenantActive } from "@/lib/assert-tenant-active";
 import { ilikeOrValue, eqOrValue } from "@/lib/db/or-escape";
 import { decryptCustomerPiiList } from "@/lib/customer-pii";
+import { resend } from "@/lib/email/resend";
+import QuoteEmail from "@/lib/email/templates/QuoteEmail";
 
 import { flushSentry } from "@/lib/sentry-flush";
 // Intake inserts (repair / bespoke / sale) all go through the shared
@@ -445,6 +447,73 @@ export async function createRepairFromIntake(
         });
         if (payErr) return { error: `intake-deposit payment insert failed: ${payErr.message}` };
       }
+    }
+  }
+
+  // M-04 (desktop-Opus): if intake produced a quoted_price AND the
+  // customer has an email on file, send a quote email. Side-effect
+  // log+continue: email-send failure is a visibility gap (the
+  // repair + invoice rows are already committed); the customer can
+  // still be quoted manually from /repairs/[id]. Sentry captures
+  // the failure for follow-up.
+  if ((input.quoted_price ?? 0) > 0 && input.customer_id) {
+    try {
+      const { data: customer } = await admin
+        .from("customers")
+        .select("full_name, email, email_status, email_opted_out")
+        .eq("id", input.customer_id)
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+
+      const canSend =
+        customer?.email &&
+        customer.email_status !== "bounced" &&
+        customer.email_status !== "complained" &&
+        !customer.email_opted_out;
+
+      if (canSend) {
+        const { data: tenantInfo } = await admin
+          .from("tenants")
+          .select("business_name, name, email, phone")
+          .eq("id", tenantId)
+          .maybeSingle();
+
+        const businessName =
+          tenantInfo?.business_name || tenantInfo?.name || "Your Jeweller";
+
+        const { error: sendErr } = await resend.emails.send({
+          from: `${businessName} via Nexpura <notifications@nexpura.com>`,
+          to: customer!.email!,
+          replyTo: tenantInfo?.email ?? undefined,
+          subject: `Quote for your ${input.item_description} — ${businessName}`,
+          react: QuoteEmail({
+            customerName: customer!.full_name ?? "there",
+            itemType: input.item_type,
+            itemDescription: input.item_description,
+            repairNumber: data.repair_number as string,
+            workDescription: input.work_description ?? null,
+            quotedPrice: input.quoted_price ?? 0,
+            estimatedCompletion: input.due_date ?? null,
+            businessName,
+            businessEmail: tenantInfo?.email ?? null,
+            businessPhone: tenantInfo?.phone ?? null,
+          }),
+        });
+
+        if (sendErr) {
+          logger.error("[intake] repair quote email send failed (non-fatal)", {
+            repairId: data.id,
+            customerId: input.customer_id,
+            err: sendErr,
+          });
+        }
+      }
+    } catch (emailErr) {
+      logger.error("[intake] repair quote email path threw (non-fatal)", {
+        repairId: data.id,
+        customerId: input.customer_id,
+        err: emailErr,
+      });
     }
   }
 
