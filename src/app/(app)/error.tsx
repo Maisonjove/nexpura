@@ -12,12 +12,21 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to monitoring service
-    console.error("[App Error]", error);
+    console.error("[Route Error]", error);
     // Defense-in-depth — global-error.tsx also captures, but a useEffect
     // race can miss the flush before the page nav unmounts the boundary.
-    // Capturing here at the segment level ensures the event lands.
-    Sentry.captureException(error);
+    // Capturing here at the segment level + flushing the transport
+    // buffer ensures the event lands even on quick nav-away.
+    Sentry.captureException(error, {
+      tags: {
+        route: "app-root",
+        ...(error.digest ? { digest: error.digest } : {}),
+        ...(error.name ? { error_name: error.name } : {}),
+      },
+    });
+    // Force buffered transport to drain within 2s so the event isn't
+    // lost if the user navigates away before the natural flush interval.
+    Sentry.flush(2000).catch(() => {});
   }, [error]);
 
   return (
