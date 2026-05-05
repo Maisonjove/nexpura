@@ -24,7 +24,7 @@ export const POST = withSentryFlush(async (
   { params }: { params: Promise<{ subdomain: string }> }
 ) => {
   const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success } = await checkRateLimit(ip, "shop");
+  const { success } = await checkRateLimit(`${ip}:enquiry`, "shop-anon");
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
