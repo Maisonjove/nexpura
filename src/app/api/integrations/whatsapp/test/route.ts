@@ -12,10 +12,17 @@ import { getAuthContext, getIntegration, upsertIntegration } from "@/lib/integra
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { withSentryFlush } from "@/lib/sentry-flush";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const POST = withSentryFlush(async (_req: NextRequest) => {
+  // Cleanup #31: rate-limit by tenant_id instead of IP. See
+  // src/app/api/integrations/whatsapp/setup/route.ts for full
+  // rationale — same problem on this companion route. Fall back to IP
+  // only if there's no auth context.
   const ip = _req.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
+  const rateKey = await resolveTenantRateKey(ip);
+  const { success } = await checkRateLimit(rateKey, "api");
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
@@ -73,3 +80,28 @@ export const POST = withSentryFlush(async (_req: NextRequest) => {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 });
+
+/**
+ * Resolve a tenant-scoped rate-limit key. Mirror of the helper in the
+ * sibling /setup route — kept colocated so each route is independently
+ * readable. Lookup shape matches src/app/api/billing/portal/route.ts.
+ */
+async function resolveTenantRateKey(ip: string): Promise<string> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return `ip:${ip}`;
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("users")
+      .select("tenant_id")
+      .eq("id", user.id)
+      .single();
+    if (data?.tenant_id) return `tenant:${data.tenant_id}`;
+    return `ip:${ip}`;
+  } catch {
+    return `ip:${ip}`;
+  }
+}
