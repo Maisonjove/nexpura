@@ -56,6 +56,10 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
   const [isPending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [msgType, setMsgType] = useState<"success" | "error">("success");
+  // M-11: surface failures from testPrint() (popup blocked, print
+  // dialog blocked) so the user understands why nothing happened
+  // instead of assuming the printer config is wrong.
+  const [testError, setTestError] = useState<string | null>(null);
 
   // ── Receipt state ─────────────────────────────────────────────
   const rCfg = configs["receipt"] ?? {};
@@ -146,8 +150,20 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
   }
 
   function testPrint(type: PrinterType) {
+    setTestError(null);
     const w = window.open("", "_blank", "width=600,height=800");
-    if (!w) return;
+    if (!w) {
+      // M-11 (desktop-Opus): pre-fix this branch was a silent
+      // `return` — the user clicked "Test Print", nothing happened,
+      // and they had no signal that the browser blocked the popup.
+      // Surface the actual failure mode so they know to allow popups
+      // for this site instead of assuming the printer config is
+      // wrong.
+      setTestError(
+        "Couldn't open the test-print window. Your browser is blocking popups for this site — allow popups for nexpura.com and try again.",
+      );
+      return;
+    }
     if (type === "receipt") {
       w.document.write(`<!DOCTYPE html><html><head><title>Test Receipt</title>
 <style>
@@ -208,7 +224,29 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
 </body></html>`);
     }
     w.document.close();
-    setTimeout(() => w.print(), 300);
+    // M-11: replace the fixed 300ms timeout (which raced with slow
+    // page loads) with onload — the print dialog fires reliably
+    // once the document is ready. Keep a small fallback timer so a
+    // browser that already loaded the synchronous document.write
+    // before we attached onload still triggers the dialog.
+    const triggerPrint = () => {
+      try {
+        w.print();
+      } catch {
+        setTestError(
+          "The browser blocked the print dialog. Try printing from the new tab manually.",
+        );
+      }
+    };
+    if (w.document.readyState === "complete") {
+      triggerPrint();
+    } else {
+      w.onload = triggerPrint;
+      // Defensive — if onload doesn't fire (rare with synchronous
+      // document.write but seen on some embedded browsers), still
+      // trigger after a short delay.
+      setTimeout(triggerPrint, 500);
+    }
   }
 
   const tabClass = (t: PrinterType) =>
@@ -278,6 +316,18 @@ function PrintingSettingsClientInner({ tenantId, configs, businessName = "Your S
               <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
             )}
             <span>{msg}</span>
+          </div>
+        )}
+
+        {/* M-11 test-print failure banner */}
+        {testError && (
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mb-8 border-l-2 pl-4 py-1 text-sm leading-relaxed flex items-start gap-2 border-red-400 text-red-600"
+          >
+            <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{testError}</span>
           </div>
         )}
 
