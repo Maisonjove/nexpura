@@ -783,3 +783,37 @@ components:
       the hook-registration pattern.
 - [ ] If multiple parallel agents touched the codebase: ran the §9
       verification step before opening the PR.
+- [ ] Post-deploy: ran `BASE_URL=https://nexpura.com pnpm smoke:dashboard`
+      against prod with the test creds. Asserts /nexpura/dashboard
+      renders cleanly — see §11.
+
+---
+
+## 11. Post-deploy dashboard smoke (cleanup #24)
+
+After every prod deploy, run:
+
+```bash
+BASE_URL=https://nexpura.com pnpm smoke:dashboard
+```
+
+The spec lives at `e2e/post-deploy-smoke.spec.ts`. It launches a fresh
+browser context (no cookies, no SW, no cache), logs in as the dogfood
+test user, navigates to `/nexpura/dashboard`, and asserts the page
+renders a `Workspace` h1 with no `"Something went wrong"` /
+`"We've been notified about this issue"` strings anywhere on the page.
+
+This catches the failure class from 2026-05-05: a deploy that ships
+modified RSC chunk hashes can leave SW-cached RSC payloads pointing at
+removed exports, which trips the global error boundary on the next
+click-time fetch. Hard-refresh hides the bug because hard-refresh
+bypasses the SW. The smoke test does NOT use a hard-refresh, so it
+catches what real users hit.
+
+Override the user with `SMOKE_EMAIL` / `SMOKE_PASSWORD`. Override the
+target path with `SMOKE_DASHBOARD_PATH` (default `/nexpura/dashboard`).
+
+The matching SW-side fix lives in `public/sw.js` (cache-first
+restricted to content-hashed assets, RSC payloads always network-only)
+and `scripts/inject-sw-version.mjs` (postbuild rewrite of
+CACHE_VERSION per Vercel deploy).

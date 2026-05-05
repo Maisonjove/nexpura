@@ -1,5 +1,8 @@
 // Nexpura Service Worker - PWA & Offline Support
-const CACHE_VERSION = 'v7';
+// CACHE_VERSION is replaced at deploy time by scripts/inject-sw-version.mjs
+// (see package.json "postbuild"). Bumping the literal here is still a valid
+// manual override — the postbuild script just substitutes the literal again.
+const CACHE_VERSION = 'v8';
 const STATIC_CACHE = `nexpura-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `nexpura-dynamic-${CACHE_VERSION}`;
 // Hot-route RSC prefetch cache — 15-second TTL, per-user via Vary: cookie
@@ -159,9 +162,59 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets and pages: Cache first, network fallback
-  event.respondWith(cacheFirstStrategy(request));
+  // ────────────────────────────────────────────────────────────────────
+  // Fall-through dispatch — see P0 dashboard-crash-on-deploy postmortem.
+  //
+  // Original behaviour: any GET that wasn't navigation, /api/*, or a
+  // hot-route prefetch fell into cacheFirstStrategy and got cached
+  // forever. That included the dashboard's *click-time* RSC fetches
+  // (`rsc: 1` but NOT `next-router-prefetch: 1`, and NOT in
+  // HOT_ROUTE_SEGMENTS). After a deploy that removed exports / changed
+  // chunk hashes, the SW kept replaying the stale RSC payload and
+  // React hydration blew up into global-error.tsx — the user was stuck
+  // until they hard-refreshed (which bypasses the SW).
+  //
+  // Fix:
+  //   1. RSC payloads are NEVER cached — `rsc: 1` is always network-only.
+  //      Even if the user is offline, returning a stale RSC across a
+  //      deploy is worse than failing to render.
+  //   2. Cache-first is restricted to content-hashed / immutable paths
+  //      (/_next/static/*, /icons/*, etc). Their URLs change when their
+  //      content changes, so stale entries are inert.
+  //   3. Everything else falls back to networkFirstStrategy — still
+  //      cached for offline, but always tries network first so a fresh
+  //      deploy is picked up on the next request.
+  // ────────────────────────────────────────────────────────────────────
+  if (request.headers.get('rsc') === '1') {
+    // Network-only for any RSC payload that hasn't been claimed by the
+    // hot-route prefetch branch above. No caching — period.
+    return; // let the browser handle the fetch directly
+  }
+
+  if (isImmutableAssetPath(url.pathname)) {
+    // Content-hashed or shipped-with-the-app static. Cache-first is safe
+    // because URLs change when content changes.
+    event.respondWith(cacheFirstStrategy(request));
+    return;
+  }
+
+  // Everything else: network-first. Caches for offline fallback but
+  // always re-fetches when online so a fresh deploy is honoured.
+  event.respondWith(networkFirstStrategy(request));
 });
+
+// Paths whose URLs are content-hashed or otherwise safe to serve from
+// cache indefinitely. Anything outside this list falls through to a
+// network-first strategy to avoid the post-deploy stale-payload trap.
+function isImmutableAssetPath(pathname) {
+  return (
+    pathname.startsWith('/_next/static/') ||
+    pathname.startsWith('/icons/') ||
+    pathname === '/manifest.json' ||
+    pathname === '/offline' ||
+    pathname === '/favicon.ico'
+  );
+}
 
 // Hot-route paths the pre-hydration warmup targets: /{slug}/{route} where
 // {route} is one of the hot jeweller pages. Matches URLs like

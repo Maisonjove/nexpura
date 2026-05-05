@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import Link from "next/link";
 
@@ -12,6 +13,20 @@ export default function RouteError({
 }) {
   useEffect(() => {
     console.error("[Route Error]", error);
+    // Defense-in-depth — global-error.tsx also captures, but a useEffect
+    // race can miss the flush before the page nav unmounts the boundary.
+    // Capturing here at the segment level + flushing the transport
+    // buffer ensures the event lands even on quick nav-away.
+    Sentry.captureException(error, {
+      tags: {
+        route: "dashboard",
+        ...(error.digest ? { digest: error.digest } : {}),
+        ...(error.name ? { error_name: error.name } : {}),
+      },
+    });
+    // Force buffered transport to drain within 2s so the event isn't
+    // lost if the user navigates away before the natural flush interval.
+    Sentry.flush(2000).catch(() => {});
   }, [error]);
 
   return (
