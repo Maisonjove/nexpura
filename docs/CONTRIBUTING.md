@@ -791,6 +791,12 @@ components:
       see §12. Vercel publishes from staged output, not source, so a
       script that only runs after `next build` will appear successful
       in build logs but ship the pre-modification file.
+- [ ] Did this PR add a defense (rate-limit / role gate / signature /
+      tenant-scope / soft-delete filter / idempotency / error-shape)?
+      If yes, were sibling handlers under the same parent path checked
+      for the same defense? Document siblings audited in PR description;
+      if any sibling was found missing, fix in this PR or open
+      follow-up tagged `half-fix-pair`. See §13.
 
 ---
 
@@ -850,3 +856,94 @@ modification lands in source BEFORE `next build` snapshots `public/`.
 If you need to modify ANY `public/*` file at deploy time, use
 `prebuild`, never `postbuild`. Verification probe: after deploy,
 `curl` the modified file from prod and confirm the change is present.
+
+---
+
+## 13. Half-fix-pair pattern
+
+A "half-fix-pair" is a recurring bug class in this codebase. Two or
+more sibling handlers (same parent path, same logic family) share
+substantively identical logic, but a defensive change applied during
+incident response to ONE sibling never propagates to the others.
+The "defense" is the diff that closed the original issue; the
+"exposure" is the same code path on a sibling that never received
+the diff.
+
+### Confirmed historical instances (2026-04 → 2026-05)
+
+1. **AAL2 middleware over-reach** (PRs #121 / #123 / #129).
+   `src/lib/supabase/middleware.ts` short-circuited `/api/*` past the
+   AAL2 enforcement chain. Fix added exemptions one path at a time
+   across THREE PRs; without the audit,
+   `/api/integrations/woocommerce/webhook` would still be in the
+   over-reach state.
+
+2. **Resend webhook email.bounced vs email.complained** (PR #142).
+   `email.bounced` was hardened to scope by tenant via
+   `email_logs.resend_id → tenant_id` and to log+continue on update
+   failures. `email.complained` — same shape, same threat — stayed
+   exposed until P2-F audit caught it.
+
+3. **sms/send-login + sms/setup** (closed by PR #150 — full SMS-2FA
+   removal). Both routes had the IP-keyed rate-limit bug; only one
+   was being patched at a time. Removing SMS 2FA entirely closed
+   both branches structurally.
+
+4. **storefront /api/shop/* deleted_at filtering** (PR #154). Three
+   sibling routes (appointment / repair-enquiry / repair-track) had
+   `tenants!inner(deleted_at)` filtering after PR #121's P2-B audit;
+   `enquiry` did not. A soft-deleted tenant could still receive
+   public-form submissions until P2-C audit caught the asymmetry.
+
+5. **cron-iterates-tenants** (THIS PR). Three lifecycle crons
+   (grace-period-checker / trial-end-checker / process-tenant-deletions)
+   filter on `tenants.deleted_at IS NULL`. Three other crons
+   (daily-tasks-digest / scheduled-reports / shopify-reconciliation)
+   iterate every tenant including soft-deleted. Soft-deleted tenant +
+   active scheduled_reports row → CSV data dump emailed to saved
+   recipients post-deletion. Same family, same threat, three sibling
+   defences missing.
+
+### Discipline: when patching a defensive change, propagate to siblings
+
+Whenever you add a defense to a handler — rate-limit, signature
+verification, role gate, soft-delete filter, error-shape sanitisation,
+tenant scope, idempotency lock — STOP before opening the PR and:
+
+1. Identify the sibling set. Default unit = the directory containing
+   your file: `src/app/api/<parent>/*/route.ts`. For lib helpers, look
+   at the family that imports the same primitive (e.g. all callers of
+   `sendTwilioWhatsApp` / `sendTwilioSms`).
+2. Run the same grep across siblings:
+   ```bash
+   git grep -nE "<defense pattern>" src/app/api/<parent>/
+   ```
+3. For every sibling that does NOT carry the defense, decide
+   explicitly: deliberate design choice OR half-fix?
+4. If half-fix: fix in same PR, OR open follow-up issue tagged
+   `half-fix-pair` referencing the originating audit.
+
+### Pre-flight checklist line for the deployment-audit gate
+
+Add to the deployment-audit gate (per-PR review before merge to main):
+
+> [ ] Did this PR add a defense (rate-limit / role gate / signature /
+> tenant-scope / soft-delete filter / idempotency / error-shape)?
+> If yes, were sibling handlers under the same parent path checked
+> for the same defense? Document siblings audited in PR description;
+> if any sibling was found missing, fix in this PR or open
+> follow-up tagged `half-fix-pair`.
+
+### Cross-reference
+
+Lint rules that catch related patterns are documented in §4-§6:
+- `no-bare-supabase-write` (defensive write-error capture)
+- `sentry-flush-before-return` (serverless flush)
+- `sentry-flush-before-callback-exit` (callback-style flush)
+- `no-logger-error-in-loop` (capture amplification alarm)
+
+These rules catch the SHAPE of half-fix-pair siblings — when
+bare-write or no-flush is added back via copy-paste from a different
+file, lint surfaces it. The half-fix-pair audit is a complementary
+manual check for non-lint-able patterns (deleted_at filtering, role
+gates, etc.).
