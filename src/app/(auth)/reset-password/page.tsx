@@ -72,16 +72,25 @@ function ResetPasswordContent() {
         return;
       }
 
-      // No token — check for existing session (e.g. navigated back after success)
+      // No recovery token in URL. Security: separate the "I lost my password"
+      // flow from "I'm signed in and want to change it" — the latter requires
+      // reauthentication (Supabase config flag
+      // `security_update_password_require_reauthentication=true`), the former
+      // is authorized solely by the recovery token. If the user already has a
+      // session and lands here without a token, send them to the
+      // signed-in-only change-password page where reauth is enforced.
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session) setIsValid(true);
+      if (session) {
+        router.replace("/settings/security/change-password");
+        return;
+      }
       setValidating(false);
     }
 
     checkSession();
-  }, [supabase, searchParams]);
+  }, [supabase, searchParams, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
