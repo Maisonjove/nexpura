@@ -16,6 +16,11 @@ interface BillingClientProps {
   /** Tenant's billing currency — controls which price the plan card
    *  displays and which price ID is used at checkout. */
   currency: CurrencyCode;
+  /** Tenant's IANA timezone. Sibling of L-05 fix (#165) — same
+   *  rationale: trial-end / next-billing dates pinned to the tenant's
+   *  TZ so they match Stripe's billing cycle at the day boundary.
+   *  Null falls back to the user's browser TZ (legacy behaviour). */
+  tenantTimezone: string | null;
 }
 
 // Map the marketing PLANS (full feature copy + multi-currency) to the
@@ -72,9 +77,17 @@ export default function BillingClient({
   subdomain,
   email,
   currency,
+  tenantTimezone,
 }: BillingClientProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
+
+  // L-05 sibling — see BillingClient.tsx for the rationale.
+  const dateFmt: Intl.DateTimeFormatOptions = {
+    ...(tenantTimezone ? { timeZone: tenantTimezone } : {}),
+  };
+  const formatDate = (iso: string | null): string =>
+    iso ? new Date(iso).toLocaleDateString("en-AU", dateFmt) : "—";
 
   async function handleUpgrade(planId: string) {
     setLoading(planId);
@@ -127,8 +140,8 @@ export default function BillingClient({
               {isTrial ? "Trial Ends" : "Next Billing"}
             </p>
             <p className="text-sm font-semibold text-stone-900">
-              {isTrial && trialEndsAt ? new Date(trialEndsAt).toLocaleDateString("en-AU") :
-               isActive && currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString("en-AU") : "—"}
+              {isTrial && trialEndsAt ? formatDate(trialEndsAt) :
+               isActive && currentPeriodEnd ? formatDate(currentPeriodEnd) : "—"}
             </p>
           </div>
         </div>
