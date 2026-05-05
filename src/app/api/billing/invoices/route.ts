@@ -23,11 +23,21 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
     const admin = createAdminClient();
     const { data: userData } = await admin
       .from("users")
-      .select("tenant_id")
+      .select("tenant_id, role")
       .eq("id", user.id)
       .single();
 
     if (!userData?.tenant_id) return NextResponse.json({ error: "No tenant" }, { status: 401 });
+
+    // RBAC: invoices expose tenant billing history (amounts paid, hosted
+    // PDF URLs) — same blast radius as the sibling /api/billing/portal
+    // and /api/billing/checkout routes, both of which gate on owner.
+    // Half-fix-pair audit finding #4 / cleanup #23: invoices was missing
+    // the role check, so a staff user with a session could fetch the
+    // tenant's invoice history. Mirror the sibling shape exactly.
+    if (userData.role !== "owner") {
+      return NextResponse.json({ error: "Owner only" }, { status: 403 });
+    }
 
     const { data: sub } = await admin
       .from("subscriptions")
