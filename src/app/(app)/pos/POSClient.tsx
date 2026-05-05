@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createPOSSale, createLaybySale } from "./actions";
 import { lookupVoucher } from "../vouchers/actions";
+import { useReloadBlocker } from "@/lib/reload-blockers";
 import {
   SaleSuccessScreen,
   ProductGrid,
@@ -38,6 +39,12 @@ export default function POSClient({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // C-06: hold the deploy-skew soft-reload while a sale is in progress.
+  // The DeployVersionBanner subscribes to this registry and waits for
+  // the cart to clear before reloading; without this, a deploy mid-sale
+  // would lose the cart silently. See src/lib/reload-blockers.ts.
+  useReloadBlocker("pos-cart", cart.length > 0);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);

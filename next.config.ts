@@ -62,6 +62,21 @@ const nextConfig: NextConfig = {
     if (sha && sha.length > 0) return `build-${sha.slice(0, 12)}`;
     return null;
   },
+  // C-06 verification finding (2026-05-05): the original PR set
+  // `generateBuildId` and assumed Next would emit
+  // `x-deployment-id` on responses. That was wrong — Next only emits
+  // that header when the separate `deploymentId` config is set.
+  // Without `deploymentId`, the only deploy-identifying header is
+  // Vercel's `x-nextjs-deployment-id: dpl_xxx` (a Vercel ID, not the
+  // SHA-based token the client compares against). Result: the
+  // DeployVersionBanner's fetch interceptor never fired in production.
+  // Fix: set `deploymentId` to the same `build-<sha12>` token. Now Next
+  // emits `x-deployment-id: build-<sha12>` matching the client's
+  // inlined `NEXT_PUBLIC_BUILD_ID`, so the comparison resolves.
+  // Falls back to `undefined` (Next's no-op) when SHA isn't available.
+  ...(process.env.VERCEL_GIT_COMMIT_SHA
+    ? { deploymentId: `build-${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12)}` }
+    : {}),
   env: {
     // Expose the build ID to client code at build time. Reading
     // `process.env.NEXT_PUBLIC_BUILD_ID` from a client component returns
