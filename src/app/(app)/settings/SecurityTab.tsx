@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { revokeAccess, getAccessRequests } from "./security-actions";
-import { ShieldCheck, Smartphone, ChevronRight, MessageSquare } from "lucide-react";
+import { ShieldCheck, Smartphone, ChevronRight } from "lucide-react";
 
 interface AccessRequest {
   id: string;
@@ -71,8 +71,6 @@ export default function SecurityTab({ tenantId }: Props) {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [totpEnabled, setTotpEnabled] = useState(false);
-  const [smsEnabled, setSmsEnabled] = useState(false);
-  const [smsPhone, setSmsPhone] = useState<string | null>(null);
 
   const loadRequests = async () => {
     const data = await getAccessRequests(tenantId);
@@ -86,12 +84,10 @@ export default function SecurityTab({ tenantId }: Props) {
     if (user) {
       const { data } = await supabase
         .from("users")
-        .select("totp_enabled, sms_2fa_enabled, sms_2fa_phone")
+        .select("totp_enabled")
         .eq("id", user.id)
         .single();
       setTotpEnabled(data?.totp_enabled ?? false);
-      setSmsEnabled(data?.sms_2fa_enabled ?? false);
-      setSmsPhone(data?.sms_2fa_phone ?? null);
     }
   };
 
@@ -151,13 +147,9 @@ export default function SecurityTab({ tenantId }: Props) {
       >
         <div className="flex items-start gap-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            totpEnabled || smsEnabled ? 'bg-green-100' : 'bg-stone-100'
+            totpEnabled ? 'bg-green-100' : 'bg-stone-100'
           }`}>
-            {smsEnabled ? (
-              <MessageSquare className="h-6 w-6 text-green-600" />
-            ) : (
-              <Smartphone className={`h-6 w-6 ${totpEnabled ? 'text-green-600' : 'text-stone-500'}`} />
-            )}
+            <Smartphone className={`h-6 w-6 ${totpEnabled ? 'text-green-600' : 'text-stone-500'}`} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
@@ -165,16 +157,14 @@ export default function SecurityTab({ tenantId }: Props) {
               <ChevronRight className="h-5 w-5 text-stone-400 group-hover:text-amber-600 transition-colors" />
             </div>
             <p className="text-sm text-stone-500 mt-0.5">
-              {totpEnabled 
+              {totpEnabled
                 ? 'Your account is protected with an authenticator app'
-                : smsEnabled
-                ? `Your account is protected with SMS (${smsPhone?.slice(0, 4)}****${smsPhone?.slice(-2)})`
                 : 'Add an extra layer of security to your account'
               }
             </p>
             <div className="mt-3">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                totpEnabled || smsEnabled
+                totpEnabled
                   ? 'bg-green-100 text-green-700'
                   : 'bg-amber-100 text-amber-700'
               }`}>
@@ -182,11 +172,6 @@ export default function SecurityTab({ tenantId }: Props) {
                   <>
                     <ShieldCheck className="h-3 w-3" />
                     Authenticator App
-                  </>
-                ) : smsEnabled ? (
-                  <>
-                    <ShieldCheck className="h-3 w-3" />
-                    SMS Verification
                   </>
                 ) : (
                   'Not enabled'

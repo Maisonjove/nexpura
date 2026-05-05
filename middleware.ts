@@ -352,8 +352,6 @@ function isCsrfExemptApi(pathname: string): boolean {
     pathname.startsWith("/api/cron/") ||
     pathname === "/api/auth/login" ||
     pathname.startsWith("/api/auth/2fa/validate") ||
-    pathname.startsWith("/api/auth/2fa/sms/send-login") ||
-    pathname.startsWith("/api/auth/2fa/sms/verify-login") ||
     pathname.startsWith("/api/stripe/") || // Stripe-side redirect endpoints
     // Integration webhooks: vendor-origin POSTs with HMAC verification.
     (pathname.startsWith("/api/integrations/") && pathname.endsWith("/webhook"))

@@ -57,8 +57,6 @@ const CALL_SITES_NO_RAW_RESEND = [
 
 const CALL_SITES_NO_RAW_TWILIO_FETCH = [
   "src/app/(app)/repairs/[id]/actions.ts",
-  "src/app/api/auth/2fa/sms/send-login/route.ts",
-  "src/app/api/auth/2fa/sms/setup/route.ts",
 ];
 
 describe("PR-03 static-analysis: no raw Resend construction at fixed call-sites", () => {

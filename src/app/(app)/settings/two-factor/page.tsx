@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ShieldCheck, Smartphone, Copy, Check, AlertTriangle, ArrowLeft, Key, Trash2, MessageSquare } from 'lucide-react';
+import { ShieldCheck, Smartphone, Copy, Check, AlertTriangle, ArrowLeft, Key, Trash2 } from 'lucide-react';
 import * as Sentry from '@sentry/nextjs';
 import Link from 'next/link';
 
-type TwoFactorState = 'loading' | 'disabled' | 'choose-method' | 'setup-totp' | 'setup-sms' | 'verify-totp' | 'verify-sms' | 'enabled-totp' | 'enabled-sms' | 'backup-codes';
+type TwoFactorState = 'loading' | 'disabled' | 'setup-totp' | 'enabled-totp' | 'backup-codes';
 
 export default function TwoFactorSettingsPage() {
   const router = useRouter();
@@ -17,18 +17,16 @@ export default function TwoFactorSettingsPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [verifyCode, setVerifyCode] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [phoneMasked, setPhoneMasked] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [copiedBackup, setCopiedBackup] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [remainingBackupCodes, setRemainingBackupCodes] = useState(0);
 
   useEffect(() => {
     checkTwoFactorStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function checkTwoFactorStatus() {
@@ -38,11 +36,10 @@ export default function TwoFactorSettingsPage() {
         router.push('/login');
         return;
       }
-      setUserId(user.id);
 
       const { data: profile } = await supabase
         .from('users')
-        .select('totp_enabled, sms_2fa_enabled, sms_2fa_phone, totp_backup_codes')
+        .select('totp_enabled, totp_backup_codes')
         .eq('id', user.id)
         .single();
 
@@ -50,11 +47,6 @@ export default function TwoFactorSettingsPage() {
         const backupCodesArr = profile.totp_backup_codes || [];
         setRemainingBackupCodes(backupCodesArr.filter((c: string | null) => c !== null).length);
         setState('enabled-totp');
-      } else if (profile?.sms_2fa_enabled) {
-        const backupCodesArr = profile.totp_backup_codes || [];
-        setRemainingBackupCodes(backupCodesArr.filter((c: string | null) => c !== null).length);
-        setPhoneMasked(profile.sms_2fa_phone?.slice(0, 4) + '****' + profile.sms_2fa_phone?.slice(-2) || '');
-        setState('enabled-sms');
       } else {
         setState('disabled');
       }
@@ -84,37 +76,6 @@ export default function TwoFactorSettingsPage() {
       setState('setup-totp');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to setup 2FA');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleSetupSMS() {
-    if (!phoneNumber || phoneNumber.length < 8) {
-      setError('Please enter a valid phone number');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/auth/2fa/sms/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneNumber }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send verification code');
-      }
-
-      setPhoneMasked(data.phone.slice(0, 4) + '****' + data.phone.slice(-2));
-      setState('verify-sms');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send SMS');
     } finally {
       setLoading(false);
     }
@@ -151,38 +112,7 @@ export default function TwoFactorSettingsPage() {
     }
   }
 
-  async function handleVerifySMS() {
-    if (verifyCode.length !== 6) {
-      setError('Please enter a 6-digit code');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/auth/2fa/sms/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: verifyCode }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Invalid code');
-      }
-
-      setBackupCodes(data.backupCodes);
-      setState('backup-codes');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDisable(type: 'totp' | 'sms') {
+  async function handleDisable() {
     if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
       return;
     }
@@ -191,8 +121,7 @@ export default function TwoFactorSettingsPage() {
     setError(null);
 
     try {
-      const endpoint = type === 'totp' ? '/api/auth/2fa/disable' : '/api/auth/2fa/sms/disable';
-      const res = await fetch(endpoint, { method: 'POST' });
+      const res = await fetch('/api/auth/2fa/disable', { method: 'POST' });
 
       if (!res.ok) {
         const data = await res.json();
@@ -288,7 +217,7 @@ export default function TwoFactorSettingsPage() {
         </div>
       )}
 
-      {/* Disabled state - choose method */}
+      {/* Disabled state — single CTA to start TOTP enrolment */}
       {state === 'disabled' && (
         <div className="space-y-4">
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
@@ -303,32 +232,7 @@ export default function TwoFactorSettingsPage() {
             </div>
           </div>
 
-          {/* Authenticator App Option */}
-          <button
-            onClick={() => setState('choose-method')}
-            className="w-full bg-white rounded-xl border border-stone-200 p-6 hover:border-amber-300 hover:shadow-sm transition-all text-left"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Smartphone className="h-6 w-6 text-stone-500" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-stone-900 mb-1">Enable Two-Factor Authentication</h2>
-                <p className="text-sm text-stone-500">
-                  Choose between an authenticator app or SMS verification
-                </p>
-              </div>
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* Choose Method */}
-      {state === 'choose-method' && (
-        <div className="space-y-4">
-          <p className="text-sm text-stone-600 mb-4">Choose your preferred 2FA method:</p>
-
-          {/* Authenticator App */}
+          {/* Authenticator App — only supported method */}
           <button
             onClick={handleSetupTOTP}
             disabled={loading}
@@ -348,32 +252,6 @@ export default function TwoFactorSettingsPage() {
                 </span>
               </div>
             </div>
-          </button>
-
-          {/* SMS */}
-          <button
-            onClick={() => setState('setup-sms')}
-            disabled={loading}
-            className="w-full bg-white rounded-xl border border-stone-200 p-6 hover:border-amber-300 hover:shadow-sm transition-all text-left disabled:opacity-50"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="h-6 w-6 text-blue-700" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-stone-900 mb-1">SMS Verification</h2>
-                <p className="text-sm text-stone-500">
-                  Receive a verification code via text message
-                </p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setState('disabled')}
-            className="w-full py-2.5 text-stone-600 text-sm hover:text-stone-900 transition-colors"
-          >
-            Cancel
           </button>
         </div>
       )}
@@ -436,7 +314,7 @@ export default function TwoFactorSettingsPage() {
           <div className="flex gap-3">
             <button
               onClick={() => {
-                setState('choose-method');
+                setState('disabled');
                 setQrCode(null);
                 setSecret(null);
                 setVerifyCode('');
@@ -447,92 +325,6 @@ export default function TwoFactorSettingsPage() {
             </button>
             <button
               onClick={handleVerifyTOTP}
-              disabled={loading || verifyCode.length !== 6}
-              className="flex-1 bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Verifying...' : 'Verify & Enable'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Setup SMS */}
-      {state === 'setup-sms' && (
-        <div className="bg-white rounded-xl border border-stone-200 p-6">
-          <h2 className="font-semibold text-stone-900 mb-4">Enter Your Phone Number</h2>
-          <p className="text-sm text-stone-500 mb-4">
-            We&apos;ll send a verification code to this number each time you sign in.
-          </p>
-
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+61 400 000 000"
-              className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
-            />
-            <p className="text-xs text-stone-400 mt-2">Include country code (e.g., +61 for Australia)</p>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                setState('choose-method');
-                setPhoneNumber('');
-              }}
-              className="flex-1 px-4 py-2.5 border border-stone-200 text-stone-700 font-medium rounded-lg hover:bg-stone-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSetupSMS}
-              disabled={loading || !phoneNumber}
-              className="flex-1 bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
-            >
-              {loading ? 'Sending...' : 'Send Code'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Verify SMS */}
-      {state === 'verify-sms' && (
-        <div className="bg-white rounded-xl border border-stone-200 p-6">
-          <h2 className="font-semibold text-stone-900 mb-4">Enter Verification Code</h2>
-          <p className="text-sm text-stone-500 mb-4">
-            We sent a 6-digit code to {phoneMasked}
-          </p>
-
-          <div className="mb-4">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={verifyCode}
-              onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="000000"
-              className="w-full px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-amber-500"
-              autoComplete="one-time-code"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                setState('setup-sms');
-                setVerifyCode('');
-              }}
-              className="flex-1 px-4 py-2.5 border border-stone-200 text-stone-700 font-medium rounded-lg hover:bg-stone-50 transition-colors"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleVerifySMS}
               disabled={loading || verifyCode.length !== 6}
               className="flex-1 bg-nexpura-charcoal text-white font-medium py-2.5 rounded-lg hover:bg-nexpura-charcoal-700 transition-colors disabled:opacity-50"
             >
@@ -670,81 +462,7 @@ export default function TwoFactorSettingsPage() {
             </div>
 
             <button
-              onClick={() => handleDisable('totp')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              {loading ? 'Disabling...' : 'Disable 2FA'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Enabled SMS state */}
-      {state === 'enabled-sms' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <ShieldCheck className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-stone-900">Two-Factor Authentication is Enabled</h2>
-                <p className="text-sm text-stone-500 mt-1">
-                  Your account is protected with SMS verification.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-green-700">
-                  SMS codes sent to {phoneMasked}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-stone-200 p-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Key className="h-5 w-5 text-stone-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-stone-900">Backup Codes</h3>
-                <p className="text-sm text-stone-500 mt-0.5">
-                  {remainingBackupCodes} of 8 backup codes remaining
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={handleRegenerateBackupCodes}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-stone-200 text-stone-700 font-medium rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
-            >
-              <Key className="h-4 w-4" />
-              {loading ? 'Generating...' : 'Generate New Backup Codes'}
-            </button>
-          </div>
-
-          <div className="bg-white rounded-xl border border-red-200 p-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Trash2 className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-stone-900">Disable Two-Factor Authentication</h3>
-                <p className="text-sm text-stone-500 mt-0.5">
-                  This will make your account less secure
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleDisable('sms')}
+              onClick={handleDisable}
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
             >
