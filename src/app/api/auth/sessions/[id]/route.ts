@@ -9,21 +9,22 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { reportServerError } from '@/lib/logger';
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'api');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate-limit keyed by user.id so a shared-IP neighbour can't DoS
+    // the victim's session-revoke surface.
+    const { success } = await checkRateLimit(user.id, 'api');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     const { id: sessionId } = await params;

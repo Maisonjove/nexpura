@@ -9,24 +9,25 @@ import { getUserSessions, revokeAllOtherSessions } from '@/lib/session-manager';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { reportServerError } from '@/lib/logger';
 
-export async function GET(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'api');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
+export async function GET(_req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Rate-limit keyed by user.id so a shared-IP neighbour can't DoS
+    // the victim's session-listing surface.
+    const { success } = await checkRateLimit(user.id, 'api');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     const sessions = await getUserSessions(user.id, session?.access_token);
-    
+
     return NextResponse.json({ sessions });
   } catch (error) {
     reportServerError('auth/sessions:GET', error);
@@ -34,19 +35,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'api');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
+export async function DELETE(_req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate-limit keyed by user.id so a shared-IP neighbour can't DoS
+    // the victim's revoke-all-sessions surface.
+    const { success } = await checkRateLimit(user.id, 'api');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -55,7 +57,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const revoked = await revokeAllOtherSessions(user.id, session.access_token);
-    
+
     return NextResponse.json({ revoked, message: `Revoked ${revoked} session(s)` });
   } catch (error) {
     reportServerError('auth/sessions:DELETE', error);
