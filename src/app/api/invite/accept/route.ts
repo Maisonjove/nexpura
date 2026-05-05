@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { inviteAcceptSchema } from "@/lib/schemas";
 import { withSentryFlush } from "@/lib/sentry-flush";
+import { withAuditLog, setAuditContext } from "@/lib/audit-wrapper";
 
 /**
  * POST /api/invite/accept
@@ -22,12 +23,17 @@ import { withSentryFlush } from "@/lib/sentry-flush";
  *      invite_token_hash IS NULL (transition window).
  *   4. Post-accept, clear both invite_token AND invite_token_hash so
  *      the link can't be replayed.
+ *
+ * C-05 canary: this is the first thing a new manager does. The audit
+ * wrapper emits action="team_member_invite" on a 200, with entityId =
+ * the team_members row. The QA agent's brief calls this the canary —
+ * when this stops emitting, the wrapper itself is broken.
  */
 function sha256Hex(s: string): string {
   return crypto.createHash("sha256").update(s, "utf8").digest("hex");
 }
 
-export const POST = withSentryFlush(async (request: NextRequest) => {
+async function handleInviteAccept(request: NextRequest): Promise<NextResponse> {
   try {
     // Rate limit by IP to prevent token brute-forcing
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "anonymous";
@@ -171,9 +177,34 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       return NextResponse.json({ error: "Failed to accept invitation" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    // C-05 canary: stash audit context for the wrapper. The wrapper
+    // reads this header, deletes it, then emits to audit_logs with the
+    // resolved tenant + team_members row id so the activity feed links
+    // straight to the new manager's record.
+    const okResponse = NextResponse.json({ success: true });
+    setAuditContext(okResponse, {
+      tenantId: invite.tenant_id,
+      entityId: invite.id,
+      userIdOverride: userId,
+      newData: {
+        team_member_id: invite.id,
+        email: invite.email,
+        role: invite.role,
+      },
+      metadata: {
+        canary: "invite_accept",
+      },
+    });
+    return okResponse;
   } catch (error) {
     logger.error("Invite accept error:", error);
     return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
-});
+}
+
+export const POST = withSentryFlush(
+  withAuditLog(handleInviteAccept, {
+    action: "team_member_invite",
+    entityType: "team_member",
+  })
+);
