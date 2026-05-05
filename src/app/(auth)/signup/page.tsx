@@ -395,7 +395,7 @@ function SignupContent() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    placeholder="At least 8 characters"
+                    placeholder="At least 12 characters"
                     className="w-full px-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm pr-11"
                   />
                   <button
