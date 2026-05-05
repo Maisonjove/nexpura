@@ -11,8 +11,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/inject-sw-version.mjs",
-    "postbuild": "node scripts/inject-sw-version.mjs",
+    "prebuild": "node scripts/inject-sw-version.mjs",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
