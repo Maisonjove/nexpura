@@ -50,10 +50,21 @@ interface PassportEvent {
   created_at: string;
 }
 
-// Validate passport UID format to prevent abuse
+// M-10: UUID v4 (public_uid, preferred) OR legacy NXP-XXXXXX OR
+// numeric identity_number (legacy, sunsetting 2026-08-05).
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LEGACY_NXP_RE = /^NXP-[A-F0-9]{6}$/i;
+const LEGACY_NUMERIC_RE = /^\d{1,12}$/;
+
 function isValidPassportUid(uid: string): boolean {
-  // NXP-XXXXXX format or numeric identity_number
-  return /^NXP-[A-F0-9]{6}$/i.test(uid) || /^\d{1,12}$/.test(uid);
+  return UUID_V4_RE.test(uid) || LEGACY_NXP_RE.test(uid) || LEGACY_NUMERIC_RE.test(uid);
+}
+
+function classifyLookupForm(uid: string): "public_uid" | "legacy_nxp" | "legacy_numeric" | "invalid" {
+  if (UUID_V4_RE.test(uid)) return "public_uid";
+  if (LEGACY_NXP_RE.test(uid)) return "legacy_nxp";
+  if (LEGACY_NUMERIC_RE.test(uid)) return "legacy_numeric";
+  return "invalid";
 }
 
 function SpecItem({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -147,29 +158,40 @@ async function VerifyPage({
   // Use admin client (service role) - bypasses RLS, safe because we're server-side only
   const supabase = createAdminClient();
 
-  // Try to find passport by passport_uid first, then by identity_number.
-  // Use ilike for case-insensitive match — the regex above already
-  // accepts NXP-xxxxxx case-insensitively, but the previous .eq()
-  // here was case-sensitive against the stored uppercase form, so a
-  // QR scanned as `nxp-8b3e77` would resolve to "Passport Not Found"
-  // even though the staff /passports/verify action handles the same
-  // input via .ilike. Aligning the behaviour.
-  let passport = null;
+  // M-10: lookup ladder — public_uid first (UUID v4, unenumerable),
+  // then legacy passport_uid (NXP-XXXXXX or numeric), then
+  // identity_number. Legacy hits (not the public_uid path) are
+  // audit-logged so the 90-day sunset (2026-08-05) decision is
+  // data-driven.
+  let passport: { id: string; tenant_id: string; [k: string]: unknown } | null = null;
+  const lookupForm = classifyLookupForm(uid);
 
-  // First try passport_uid (legacy format like NXP-XXXXXX)
-  const { data: byUid } = await supabase
-    .from("passports")
-    .select("*")
-    .ilike("passport_uid", uid)
-    .eq("is_public", true)
-    .eq("status", "active")
-    .is("deleted_at", null)
-    .maybeSingle();
-  
-  if (byUid) {
-    passport = byUid;
-  } else {
-    // Try identity_number (numeric format like 100000001)
+  if (lookupForm === "public_uid") {
+    const { data: byPublic } = await supabase
+      .from("passports")
+      .select("*")
+      .ilike("public_uid", uid)
+      .eq("is_public", true)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (byPublic) passport = byPublic as typeof passport;
+  }
+
+  if (!passport) {
+    // Legacy form: passport_uid (NXP-XXXXXX or numeric).
+    const { data: byUid } = await supabase
+      .from("passports")
+      .select("*")
+      .ilike("passport_uid", uid)
+      .eq("is_public", true)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (byUid) passport = byUid as typeof passport;
+  }
+
+  if (!passport && lookupForm === "legacy_numeric") {
     const numericUid = parseInt(uid, 10);
     if (!isNaN(numericUid)) {
       const { data: byIdentity } = await supabase
@@ -180,8 +202,30 @@ async function VerifyPage({
         .eq("status", "active")
         .is("deleted_at", null)
         .maybeSingle();
-      passport = byIdentity;
+      if (byIdentity) passport = byIdentity as typeof passport;
     }
+  }
+
+  // M-10 audit-log legacy hits so the sunset decision (2026-08-05)
+  // is data-driven. Fire-and-forget — log failure must not slow the
+  // verify response.
+  if (passport && (lookupForm === "legacy_nxp" || lookupForm === "legacy_numeric")) {
+    const passportRow = passport as Record<string, unknown>;
+    void supabase
+      .from("passport_legacy_lookups")
+      .insert({
+        passport_id: passportRow.id as string,
+        tenant_id: passportRow.tenant_id as string,
+        lookup_form: lookupForm,
+        ip_hash: ip ? Buffer.from(ip).toString("base64").slice(0, 32) : null,
+        user_agent: hdrs.get("user-agent")?.slice(0, 200) ?? null,
+      })
+      .then(({ error }) => {
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.error("[verify] legacy-lookup audit insert failed", error);
+        }
+      });
   }
 
   if (!passport) {

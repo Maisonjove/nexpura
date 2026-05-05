@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
@@ -35,8 +36,17 @@ export async function createPassport(formData: FormData): Promise<void> {
   );
   if (identityError || !identityData) throw new Error("Failed to generate passport identity number");
   const identityNumber = identityData as number;
-  // Use identity number as the passport UID for display
+  // Use identity number as the (legacy) passport UID for display.
+  // Retained for QR codes / NFC tags already in the wild — see M-10
+  // sunset window 2026-08-05.
   const passportUid = identityNumber.toString();
+
+  // M-10: unguessable public_uid for share + verify URLs.
+  // crypto.randomUUID() produces a UUID v4 (122 bits of entropy) —
+  // unenumerable. New passports use this for the public /verify/[uid]
+  // surface; legacy lookups (passport_uid + identity_number) remain
+  // supported through 2026-08-05 for physical QR compat.
+  const publicUid = randomUUID();
 
   const title = formData.get("title") as string;
   const jewelleryType = (formData.get("jewellery_type") as string) || null;
@@ -82,6 +92,7 @@ export async function createPassport(formData: FormData): Promise<void> {
       tenant_id: tenantId,
       passport_uid: passportUid,
       identity_number: identityNumber,
+      public_uid: publicUid,
       title,
       jewellery_type: jewelleryType,
       description,
