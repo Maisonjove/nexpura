@@ -947,3 +947,97 @@ bare-write or no-flush is added back via copy-paste from a different
 file, lint surfaces it. The half-fix-pair audit is a complementary
 manual check for non-lint-able patterns (deleted_at filtering, role
 gates, etc.).
+
+---
+
+## 14. Server-action re-exports break the SWC bundler
+
+A bare `export { x } from "y"` re-export inside a `"use server"` file
+will silently break **every** export from that file at build time.
+Not just the re-exported symbol — *all* local exports become invisible
+to the bundler. The local TypeScript compiler and Vitest contract
+tests do not catch it; only an actual Next.js production build does.
+
+### The pattern that fails
+
+```ts
+// src/app/(app)/settings/team/actions.ts
+"use server";
+
+import { logger } from "@/lib/logger";
+
+// 👇 This single line silently nukes every other export below.
+export { inviteTeamMember } from "../roles/actions";
+
+export async function updateTeamMemberRole(...) { ... }   // ← invisible
+export async function removeTeamMember(...) { ... }       // ← invisible
+export async function createTask(...) { ... }             // ← invisible
+```
+
+Build error from Vercel:
+
+> `./src/app/(app)/settings/team/TeamClient.tsx:6:1`
+> `Export updateTeamMemberRole doesn't exist in target module`
+>
+> The export `updateTeamMemberRole` was not found in module
+> `./src/app/(app)/settings/team/actions.ts`. **The module has no
+> exports at all.** All exports of the module are statically known
+> (It doesn't have dynamic exports). So it's known statically that
+> the requested export doesn't exist.
+
+### The pattern that works
+
+Drop the re-export. Have consumers import directly from the canonical
+file:
+
+```ts
+// src/app/(app)/settings/team/actions.ts — no re-export, only locals
+"use server";
+export async function updateTeamMemberRole(...) { ... }
+export async function removeTeamMember(...) { ... }
+export async function createTask(...) { ... }
+```
+
+```tsx
+// src/app/(app)/settings/team/TeamClient.tsx
+import {
+  removeTeamMember,
+  updateTeamMemberRole,
+  createTask,
+} from "./actions";
+
+// Imported directly from the canonical, NOT via a re-export.
+import { inviteTeamMember } from "../roles/actions";
+```
+
+### Why local checks don't catch this
+
+| Tool | Sees the bug? | Why |
+|---|---|---|
+| `pnpm tsc --noEmit` | ❌ no | Re-exports are valid TypeScript. tsc resolves the symbol type and stops there. |
+| `pnpm vitest run` | ❌ no | Contract tests grep source text; they don't run the SWC server-action transform. |
+| `pnpm build` (locally) | ✅ yes | The Next.js production build runs the SWC server-action transform. |
+| Vercel deploy | ✅ yes | Same as `pnpm build`. |
+
+Treat a clean tsc + green Vitest as necessary-but-not-sufficient for
+server-action edits. If you change anything in a `"use server"`
+file's export shape (especially adding/removing re-exports), run a
+local `pnpm build` once before pushing, or accept that the Vercel
+preview is the verifier.
+
+### Canonical reference
+
+- **PR #187** (`post-audit/h04-invite-consolidation`) introduced the
+  re-export when consolidating `inviteTeamMember`. tsc + Vitest were
+  green; Vercel preview deploy failed. Commit `fbd2d0c0` reverted the
+  re-export and switched the consumer to a direct import; deploy
+  cleared on the next commit.
+
+### Why this is a half-fix-pair (§13) signal too
+
+The original H-04a change touched two siblings (`settings/team/actions.ts`
+and `settings/roles/actions.ts`). The fix consolidated logic into one,
+which is the right shape — but the re-export was added as a
+backwards-compatibility convenience for callers, and that convenience
+is what tripped the bundler. **When consolidating sibling files, do
+not leave a re-export shim behind**; update the call sites.
