@@ -1236,3 +1236,107 @@ is what catches the assumption error in the unit-test fixtures.
 - `src/lib/__tests__/c06-config-contract.test.ts` — the contract test
   added in `5d031c7b` that probes the actual surface (next.config.ts
   output + bundle inlining + header name in source)
+
+---
+
+## 16. Backfill scripts: dry-run vs write semantics
+
+A backfill script that conflates "dry-run skipped because of dry-run"
+with "dry-run skipped because the row already exists" lies to the
+operator. The 2026-05-05 wave-4 backfill caught this exact bug in
+`scripts/backfill-team-members-c02.ts`: dry-run reported "10 skipped /
+already-present", but in fact 10 owners had no `team_members` row.
+The lying-script bug nearly hid a real production data gap (PR #162's
+code-fallback layer was the only thing keeping prod functional). 10
+genuine inserts ran on the WRITE-mode pass once Joey's post-mortem
+question forced a direct DB query.
+
+### The trap shape (pre-#197)
+
+```ts
+async function backfill(row): Promise<{ inserted: boolean; rowId: string | null }> {
+  const { data: existing } = await admin.from("X").select("id").eq(...).maybeSingle();
+  if (existing?.id) {
+    return { inserted: false, rowId: existing.id };  // ← row exists
+  }
+  if (DRY_RUN) {
+    return { inserted: false, rowId: null };          // ← would have inserted
+  }
+  // ... actual insert
+}
+
+// Reporter:
+} else {
+  console.log(`... row already exists (${result.rowId ?? "dry-run"})`);
+  // ↑ same string for both branches above. The "row already exists"
+  //   line fires for dry-run-no-row AND write-row-exists alike.
+}
+```
+
+The pre-fix shape returned the same `{ inserted: false, rowId: null }`
+for two semantically distinct cases. The reporter then collapsed them
+into "row already exists (dry-run)", which is a lie when the row
+genuinely doesn't exist yet. Operator reads "10 skipped, 0 inserted"
+and thinks the backfill is a no-op.
+
+### Required shape — 4-state outcome
+
+A backfill that performs an insertion (i.e. has an existence check
++ a dry-run guard) MUST report 4 distinct states:
+
+| Existence check | Mode    | Status         | Meaning                              |
+|-----------------|---------|----------------|--------------------------------------|
+| no row          | DRY-RUN | `would_insert` | Plan: insert. WRITE would write.     |
+| no row          | WRITE   | `inserted`     | Insert just ran.                     |
+| row exists      | DRY-RUN | `exists`       | Plan: skip. WRITE would skip.        |
+| row exists      | WRITE   | `skip_exists`  | Skipped a duplicate.                 |
+
+Reporter MUST emit a distinct line per state. Summary line MUST count
+each state separately. Dry-run summary MUST NOT use `inserted` or
+`skipped` as headline counts — only `would_insert` + `exists`.
+
+### Canonical reference
+
+- **PR #197** (`post-audit/backfill-c02-dryrun-fix`) — first cut of
+  the fix; introduced a 3-state outcome (`inserted` /
+  `already_present` / `dry_run_planned`).
+- **PR #198** (`post-audit/backfill-dryrun-4state`) — extended to
+  the canonical 4-state vocabulary above. Added unit tests covering
+  each state + each reporter message + a regression guard that pins
+  the four messages as pairwise distinct.
+- **`scripts/backfill-c02-decider.ts`** — the canonical
+  decider/reporter pair, side-effect-free, importable from tests.
+  Use this shape as the template for any new backfill script.
+
+### Audit checklist (run before opening a PR with a new backfill)
+
+- [ ] Existence check happens BEFORE the dry-run guard.
+- [ ] Decider returns a state from the 4-state set above (no
+      booleans, no `null`-as-status).
+- [ ] Reporter emits a different string for each of the four states.
+- [ ] Summary distinguishes `would_insert` (dry-run) from `inserted`
+      (write) and `exists` (dry-run) from `skip_exists` (write).
+- [ ] Decider + reporter live in a side-effect-free module so unit
+      tests can exercise them without env-var setup.
+- [ ] Unit tests assert: pairwise-distinct messages + state matrix
+      (no row × dry-run/write × row exists × dry-run/write).
+- [ ] Dry-run on a fully-populated DB produces `would_insert=0
+      exists=N` (not just "0 affected, nothing to do").
+
+### Scripts NOT subject to this pattern
+
+Backfills that don't have an "exists vs insert" decision — e.g. the
+encryption scripts (`scripts/encrypt-*.ts`) which iterate plaintext
+rows + write encrypted versions, or `scripts/backfill-passport-public-uids.ts`
+which sets a column on rows where `public_uid IS NULL` — use a
+different shape (`processed=N updated=M` summary). They were audited
+on 2026-05-05 and found clean; this section's 4-state vocabulary
+applies only to the existence-check-then-insert pattern.
+
+### Why no lint rule
+
+The bug is semantic, not syntactic — a syntactically valid 2-state
+boolean return CAN be correct in scripts that don't have a dry-run
+mode at all. ESLint can't reliably distinguish. Manual checklist
+(above) + unit-test discipline are the gates. If this bug class
+recurs despite the checklist, revisit.
