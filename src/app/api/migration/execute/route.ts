@@ -207,9 +207,14 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
       success: true,
     });
   } catch (err: unknown) {
+    // P2-A Item 9: don't echo raw err.message to the response — the
+    // migration pipeline can surface internal storage/PostgREST/SQL
+    // identifiers that aren't useful to the operator and aren't safe
+    // to leak. Log full err with stack via reportServerError, return
+    // a canonical generic message.
     logger.error('Execute error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
+      { error: 'Migration execute failed' },
       { status: 500 }
     );
   }

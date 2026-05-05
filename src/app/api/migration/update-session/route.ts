@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { migrationUpdateSessionSchema } from '@/lib/schemas';
 import { checkRateLimit } from "@/lib/rate-limit";
+import { reportServerError } from "@/lib/logger";
 
 /**
  * Launch-QA W5-CRIT-002: this route previously matched the session solely
@@ -76,6 +77,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ session: data });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+    // P2-A Item 9: log full err, return generic message — internal
+    // PostgREST/RLS error strings aren't useful or safe to leak.
+    reportServerError("migration/update-session:POST", err);
+    return NextResponse.json({ error: "Migration session update failed" }, { status: 500 });
   }
 }

@@ -18,6 +18,37 @@
  * The length check is itself NOT timing-safe, but revealing the expected
  * length of a crypto-random token (typically 32-64 chars) is not a
  * meaningful information leak — the token content is what matters.
+ *
+ * --------------------------------------------------------------
+ * Timing-safe sweep audit (P2-A Item 7, 2026-05-05)
+ * --------------------------------------------------------------
+ * Grepped src/ for direct `===` / `!==` comparisons of any value
+ * holding a secret/token/bearer/HMAC payload, plus all
+ * `process.env.*SECRET*` and `process.env.*TOKEN*` reads. Findings:
+ *
+ *   - All cron route handlers use `safeBearerMatch` against
+ *     CRON_SECRET (cleanup, daily-tasks-digest, fx-refresh,
+ *     grace-period-checker, migration-chunk-runner, overdue-invoices,
+ *     payment-required, process-tenant-deletions, scheduled-reports,
+ *     shopify-reconciliation, totp-pending-sweep, trial-end-checker,
+ *     webhook-audit-summary).
+ *   - All webhook handlers (Stripe, Stripe-marketing, Resend) verify
+ *     signatures via node:crypto.timingSafeEqual inside
+ *     `src/lib/webhook-security.ts`.
+ *   - Review/staff bypass tokens in `src/lib/auth/review.ts` use
+ *     `safeCompare`.
+ *   - Middleware bearer/cookie checks (review token, AAL2 cookie,
+ *     shell cookie) all use safeCompare or its Web Crypto equivalent
+ *     in `src/lib/auth/two-factor-cookie.ts` /
+ *     `src/lib/dashboard/shell-cookie.ts`.
+ *   - Outbound `Bearer ${apiKey}` headers (Resend, OpenAI, Stripe,
+ *     Google, Shopify, Xero, Mailchimp, WhatsApp) are interpolations,
+ *     NOT comparisons — out of scope.
+ *
+ * No remaining direct-comparison sites identified. If a new
+ * secret-handling endpoint lands, route the comparison through
+ * `safeCompare` / `safeBearerMatch` / `crypto.timingSafeEqual` and
+ * leave a comment pointing back here.
  */
 const textEncoder = new TextEncoder();
 

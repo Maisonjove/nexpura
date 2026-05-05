@@ -135,12 +135,34 @@ export async function verifyTwoFactorCookie(
   cookieValue: string | null | undefined,
   expectedUserId: string
 ): Promise<boolean> {
-  if (!cookieValue || !expectedUserId) return false;
+  const result = await verifyAndExtractTwoFactorCookie(cookieValue, expectedUserId);
+  return result.valid;
+}
+
+/**
+ * Same verification logic as `verifyTwoFactorCookie`, but also returns the
+ * payload's `iat` (issued-at, ms since epoch) when the cookie is valid.
+ *
+ * Used by the /admin idle-timeout enforcement in middleware: a cookie can
+ * be HMAC-valid + user-bound + within the 7-day max-age yet still represent
+ * an idle session. The /admin path additionally enforces a 30-minute
+ * inactivity window on top of the standard validation, so the middleware
+ * needs visibility into the iat to compute "time since last successful
+ * /admin nav".
+ *
+ * Non-/admin paths continue to call `verifyTwoFactorCookie` and never see
+ * the iat — preserving the sliding-Supabase-session UX for tenant users.
+ */
+export async function verifyAndExtractTwoFactorCookie(
+  cookieValue: string | null | undefined,
+  expectedUserId: string
+): Promise<{ valid: boolean; iat?: number }> {
+  if (!cookieValue || !expectedUserId) return { valid: false };
   const secret = getTwoFactorCookieSecret();
-  if (!secret) return false;
+  if (!secret) return { valid: false };
 
   const dot = cookieValue.lastIndexOf(".");
-  if (dot <= 0) return false;
+  if (dot <= 0) return { valid: false };
 
   const bodyPart = cookieValue.slice(0, dot);
   const sigPart = cookieValue.slice(dot + 1);
@@ -151,34 +173,34 @@ export async function verifyTwoFactorCookie(
     body = b64urlDecode(bodyPart);
     sig = b64urlDecode(sigPart);
   } catch {
-    return false;
+    return { valid: false };
   }
 
   let expected: Uint8Array;
   try {
     expected = await hmacSha256(secret, body);
   } catch {
-    return false;
+    return { valid: false };
   }
-  if (!timingSafeEqual(sig, expected)) return false;
+  if (!timingSafeEqual(sig, expected)) return { valid: false };
 
   let parsed: TwoFactorCookiePayload;
   try {
     parsed = JSON.parse(textDecoder.decode(body)) as TwoFactorCookiePayload;
   } catch {
-    return false;
+    return { valid: false };
   }
-  if (!parsed || typeof parsed !== "object") return false;
+  if (!parsed || typeof parsed !== "object") return { valid: false };
   if (typeof parsed.uid !== "string" || parsed.uid !== expectedUserId) {
-    return false;
+    return { valid: false };
   }
   if (typeof parsed.iat !== "number" || !Number.isFinite(parsed.iat)) {
-    return false;
+    return { valid: false };
   }
   const maxAgeMs = getMaxAgeSeconds() * 1000;
-  if (Date.now() - parsed.iat > maxAgeMs) return false;
+  if (Date.now() - parsed.iat > maxAgeMs) return { valid: false };
 
-  return true;
+  return { valid: true, iat: parsed.iat };
 }
 
 /**

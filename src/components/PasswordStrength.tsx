@@ -10,20 +10,22 @@ export interface PasswordScore {
 export function scorePassword(password: string): PasswordScore {
   const feedback: string[] = [];
 
-  const hasMin8 = password.length >= 8;
+  // Server policy raised the floor to 12 chars + HIBP screening
+  // (Supabase auth config: password_min_length=12). Mirror the floor here.
+  const hasMin12 = password.length >= 12;
   const hasUppercase = /[A-Z]/.test(password);
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[^A-Za-z0-9]/.test(password);
-  const hasMin12 = password.length >= 12;
+  const hasMin16 = password.length >= 16;
 
-  if (!hasMin8) feedback.push("At least 8 characters");
+  if (!hasMin12) feedback.push("At least 12 characters");
   if (!hasUppercase) feedback.push("At least 1 uppercase letter");
   if (!hasLowercase) feedback.push("At least 1 lowercase letter");
   if (!hasNumber) feedback.push("At least 1 number");
   if (!hasSpecial) feedback.push("At least 1 special character (e.g. !@#$%)");
 
-  const score = [hasMin8, hasUppercase, hasLowercase, hasNumber, hasSpecial || hasMin12].filter(Boolean).length;
+  const score = [hasMin12, hasUppercase, hasLowercase, hasNumber, hasSpecial || hasMin16].filter(Boolean).length;
 
   let level: PasswordScore["level"];
   if (score <= 2) level = "weak";

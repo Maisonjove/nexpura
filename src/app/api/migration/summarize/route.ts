@@ -145,7 +145,11 @@ Write a concise migration summary. Return JSON:
 
     return NextResponse.json({ summary });
   } catch (err) {
+    // P2-A Item 9: log full err, return generic message. Note: status
+    // stays 200 (preserving the client contract — the summarize wizard
+    // step expects { error } at HTTP 200 so the soft-failure path
+    // doesn't surface as a network error in the UI).
     logger.error('Summarize error:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 200 });
+    return NextResponse.json({ error: "Migration summarize failed" }, { status: 200 });
   }
 });

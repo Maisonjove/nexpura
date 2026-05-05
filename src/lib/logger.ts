@@ -59,6 +59,48 @@ function redactEmailsInText(s: string): string {
   return s.replace(EMAIL_RE, "***@$2");
 }
 
+/**
+ * Recursively redact emails inside an arbitrary value before it's sent to
+ * Sentry's `extra` payload. Sentry stringifies its own way so we can't rely
+ * on JSON.stringify-then-redact: object identity matters for the dashboard
+ * UI, and a stringified blob is much harder to read. We walk strings only,
+ * leaving non-string scalars + structure intact.
+ *
+ * No-op in dev so local debugging keeps full addresses (matches
+ * `redactEmailsInText` semantics).
+ *
+ * Cycle-safe: tracks visited objects/arrays; on recurrence returns the
+ * already-cloned reference so a self-referential context doesn't infinite
+ * loop. Skips Error instances (Sentry handles those separately) and
+ * function/symbol values.
+ */
+export function redactEmailsInContext(ctx: unknown): unknown {
+  if (isDev) return ctx;
+  const seen = new WeakMap<object, unknown>();
+  function walk(value: unknown): unknown {
+    if (typeof value === "string") return redactEmailsInText(value);
+    if (value === null || value === undefined) return value;
+    if (typeof value !== "object") return value;
+    // Errors get stringified by Sentry's own serializer; don't recurse in.
+    if (value instanceof Error) return value;
+    const cached = seen.get(value as object);
+    if (cached !== undefined) return cached;
+    if (Array.isArray(value)) {
+      const out: unknown[] = [];
+      seen.set(value, out);
+      for (const item of value) out.push(walk(item));
+      return out;
+    }
+    const out: Record<string, unknown> = {};
+    seen.set(value as object, out);
+    for (const key of Object.keys(value as Record<string, unknown>)) {
+      out[key] = walk((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return walk(ctx);
+}
+
 function formatLog(entry: LogEntry): string {
   return redactEmailsInText(JSON.stringify(entry));
 }
@@ -71,8 +113,11 @@ function toSentryError(messageOrError: unknown, context?: LogContext): Error {
   if (context && typeof context === "object" && "error" in context && (context as { error: unknown }).error instanceof Error) {
     return (context as { error: Error }).error;
   }
+  // Email-redact the synthesized error message. The wrapped Error becomes the
+  // Sentry event's `message` field which is indexed + searchable; a raw
+  // customer email landing there would persist in Sentry storage indefinitely.
   const asString = typeof messageOrError === "string" ? messageOrError : JSON.stringify(messageOrError);
-  return new Error(asString);
+  return new Error(redactEmailsInText(asString));
 }
 
 export const logger = {
@@ -96,8 +141,12 @@ export const logger = {
     // intake flows, etc.) also page Sentry — no further per-file changes.
     // Wrapped in try so a Sentry SDK failure can never break the caller.
     try {
+      // Recursively redact any email strings inside the context payload before
+      // it's handed to Sentry. The `extra` field gets indexed + persisted, so
+      // a customer email here is just as bad as one in the message.
+      const redactedExtra = redactEmailsInContext(entry.context);
       Sentry.captureException(toSentryError(messageOrError, context), {
-        extra: (entry.context && typeof entry.context === "object") ? (entry.context as Record<string, unknown>) : { context: entry.context },
+        extra: (redactedExtra && typeof redactedExtra === "object") ? (redactedExtra as Record<string, unknown>) : { context: redactedExtra },
       });
       // Increment the per-request capture counter via the hook
       // registered by capture-amplification-alarm.ts (server-only).

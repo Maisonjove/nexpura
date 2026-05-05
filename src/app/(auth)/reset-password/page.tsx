@@ -72,16 +72,25 @@ function ResetPasswordContent() {
         return;
       }
 
-      // No token — check for existing session (e.g. navigated back after success)
+      // No recovery token in URL. Security: separate the "I lost my password"
+      // flow from "I'm signed in and want to change it" — the latter requires
+      // reauthentication (Supabase config flag
+      // `security_update_password_require_reauthentication=true`), the former
+      // is authorized solely by the recovery token. If the user already has a
+      // session and lands here without a token, send them to the
+      // signed-in-only change-password page where reauth is enforced.
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (session) setIsValid(true);
+      if (session) {
+        router.replace("/settings/security/change-password");
+        return;
+      }
       setValidating(false);
     }
 
     checkSession();
-  }, [supabase, searchParams]);
+  }, [supabase, searchParams, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,8 +103,8 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (password.length < 12) {
+      setError("Password must be at least 12 characters");
       setLoading(false);
       return;
     }
@@ -189,8 +198,8 @@ function ResetPasswordContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
-                placeholder="At least 8 characters"
+                minLength={12}
+                placeholder="At least 12 characters"
                 className="w-full pl-11 pr-4 py-3 rounded-lg border border-stone-200 bg-white text-stone-900 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-colors text-sm"
               />
             </div>

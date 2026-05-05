@@ -215,9 +215,10 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     });
 
   } catch (err: unknown) {
+    // P2-A Item 9: log full err, return generic message.
     logger.error('Preview error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
+      { error: 'Migration preview failed' },
       { status: 500 }
     );
   }

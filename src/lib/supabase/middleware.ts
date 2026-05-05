@@ -12,6 +12,9 @@ import {
 import {
   TWO_FACTOR_COOKIE_NAME,
   verifyTwoFactorCookie,
+  verifyAndExtractTwoFactorCookie,
+  setTwoFactorCookie,
+  clearTwoFactorCookie,
 } from "@/lib/auth/two-factor-cookie";
 import {
   SHELL_COOKIE_NAME,
@@ -633,6 +636,55 @@ async function _updateSessionInner(request: NextRequest) {
       supabaseResponse
     );
     if (twoFactorRedirectAdmin) return twoFactorRedirectAdmin;
+
+    // P2-A Item 6: 30-minute idle timeout on /admin (sliding window).
+    //
+    // The standard AAL2 cookie max-age is 7 days, matching Supabase
+    // session TTL. That's the right ergonomics for jewellers using
+    // tenant routes — they can leave a browser open all day. /admin is
+    // a different threat model: it's the platform-admin surface where
+    // Joey accesses tenant data (impersonation, cross-tenant ops,
+    // billing), so we enforce a stricter idle timeout here only.
+    //
+    // Strategy: the AAL2 cookie's payload already contains an `iat`
+    // (issued-at, ms). Read it; if more than 30 min since iat → drop
+    // the cookie and bounce to /login. If within 30 min → re-mint the
+    // cookie with a fresh iat (sliding window: each /admin nav resets
+    // the timer).
+    //
+    // This is a middleware-only enforcement — we deliberately do NOT
+    // change the platform-wide Supabase `sessions_inactivity_timeout`
+    // config, since that would also affect tenant users.
+    if (adminProfile?.totp_enabled) {
+      const ADMIN_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+      const cookie = request.cookies.get(TWO_FACTOR_COOKIE_NAME)?.value ?? null;
+      const { valid, iat } = await verifyAndExtractTwoFactorCookie(cookie, user.id);
+      if (valid && typeof iat === "number") {
+        const idleMs = Date.now() - iat;
+        if (idleMs > ADMIN_IDLE_TIMEOUT_MS) {
+          // Idle too long — drop AAL2 cookie + send back through /login.
+          // Returning the user to /admin via returnTo means the post-
+          // re-login flow (re-prompt 2FA + nav back) drops them where
+          // they were.
+          const loginUrl = request.nextUrl.clone();
+          loginUrl.pathname = "/login";
+          const returnTo = pathname + (request.nextUrl.search || "");
+          loginUrl.search = `?returnTo=${encodeURIComponent(returnTo)}`;
+          const redirectResp = redirectWithCookies(loginUrl, supabaseResponse);
+          const host = request.headers.get("host") || undefined;
+          const forwardedProto = request.headers.get("x-forwarded-proto");
+          const protocol = forwardedProto ? `${forwardedProto}:` : undefined;
+          clearTwoFactorCookie(redirectResp, host, protocol);
+          return redirectResp;
+        }
+        // Within window — re-mint the cookie with a fresh iat so the
+        // 30-minute clock resets on each /admin request.
+        const host = request.headers.get("host") || undefined;
+        const forwardedProto = request.headers.get("x-forwarded-proto");
+        const protocol = forwardedProto ? `${forwardedProto}:` : undefined;
+        await setTwoFactorCookie(supabaseResponse, user.id, host, protocol);
+      }
+    }
     return supabaseResponse;
   }
 

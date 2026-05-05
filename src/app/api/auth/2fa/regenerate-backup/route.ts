@@ -7,18 +7,19 @@ import logger from '@/lib/logger';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 export const POST = withSentryFlush(async (request: NextRequest) => {
-  const ip = request.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'auth');
-  if (!success) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
-  }
-
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate-limit keyed by user.id so a shared-IP neighbour can't DoS
+    // the victim's backup-code-regen surface.
+    const { success } = await checkRateLimit(user.id, 'auth');
+    if (!success) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
     // Pre-fix this route accepted a session-cookie-only request and
