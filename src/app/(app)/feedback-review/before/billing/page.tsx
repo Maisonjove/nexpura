@@ -66,6 +66,7 @@ export default async function BillingBeforePage() {
       subdomain={websiteData?.subdomain ?? ctx.tenantId ?? ""}
       email={email ?? ""}
       currency={tenantCurrency}
+      tenantTimezone={null}
     />
   );
 }
