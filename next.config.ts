@@ -32,6 +32,46 @@ const nextConfig: NextConfig = {
   // cacheComponents enabled globally. Preview branch proved 360/360 pages
   // generate cleanly with this flag and the segment-config exports stripped.
   cacheComponents: true,
+  // Stable, deterministic build ID derived from the deploy SHA.
+  //
+  // C-06 fix — RSC version skew:
+  // Next's default `generateBuildId` produces a random opaque string per
+  // build, so a client bundle from Deploy A and the RSC payload from
+  // Deploy B don't share an identity the runtime can compare. The
+  // built-in `x-deployment-id` mismatch detection works on Vercel for
+  // first-party fetches, but the SW (public/sw.js) proxies RSC requests
+  // via the Cache API — that means a stale-cached RSC response can be
+  // served to a client that already loaded the new HTML, with neither
+  // side flagging skew.
+  //
+  // Deriving the build ID from VERCEL_GIT_COMMIT_SHA gives us:
+  //   1. The same `build-<sha12>` token that scripts/inject-sw-version.mjs
+  //      writes into the SW's CACHE_VERSION → SW cache and Next's build
+  //      ID share a single key.
+  //   2. A predictable `process.env.NEXT_PUBLIC_BUILD_ID` value the
+  //      client can read at build time and compare against the
+  //      `x-deployment-id` response header on every fetch.
+  //   3. Determinism — re-deploying the same SHA produces the same
+  //      build ID, so a redeploy without code change doesn't trigger
+  //      a spurious skew banner.
+  //
+  // Local dev: returning `null` lets Next generate its random per-dev-server
+  // ID. The DeployVersionBanner is a no-op in development anyway.
+  async generateBuildId() {
+    const sha = process.env.VERCEL_GIT_COMMIT_SHA;
+    if (sha && sha.length > 0) return `build-${sha.slice(0, 12)}`;
+    return null;
+  },
+  env: {
+    // Expose the build ID to client code at build time. Reading
+    // `process.env.NEXT_PUBLIC_BUILD_ID` from a client component returns
+    // the inlined string token. Falls back to empty string (banner stays
+    // dormant) when the SHA isn't available — local dev, preview without
+    // git context, etc.
+    NEXT_PUBLIC_BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA
+      ? `build-${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12)}`
+      : "",
+  },
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],
     // NOTE: Next 16 replaced `experimental.ppr` with a different caching
