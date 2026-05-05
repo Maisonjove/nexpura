@@ -39,10 +39,12 @@ import {
   type PrecomputedRow,
   type LiveTaskRow,
 } from "@/app/(app)/dashboard/_stats-hydrate";
+import { ServerTiming } from "@/lib/server-timing";
 
 const PRECOMPUTED_MAX_STALE_MS = 60 * 1000;
 
 export async function GET(req: NextRequest) {
+  const timing = new ServerTiming();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -55,10 +57,18 @@ export async function GET(req: NextRequest) {
       },
     },
   );
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await timing.measure("auth", async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user;
+  });
+  if (!user) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: serverTimingHeader(timing) },
+    );
+  }
 
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,14 +76,22 @@ export async function GET(req: NextRequest) {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  const { data: userRow } = await admin
-    .from("users")
-    .select("tenant_id, role")
-    .eq("id", user.id)
-    .single();
+  const userRow = await timing.measure("user_lookup", async () => {
+    const { data } = await admin
+      .from("users")
+      .select("tenant_id, role")
+      .eq("id", user.id)
+      .single();
+    return data;
+  });
   const tenantId = (userRow as { tenant_id?: string; role?: string } | null)?.tenant_id;
   const role = (userRow as { tenant_id?: string; role?: string } | null)?.role ?? "staff";
-  if (!tenantId) return NextResponse.json({ error: "No tenant" }, { status: 403 });
+  if (!tenantId) {
+    return NextResponse.json(
+      { error: "No tenant" },
+      { status: 403, headers: serverTimingHeader(timing) },
+    );
+  }
   const isManager = role === "owner" || role === "manager";
 
   // Fast path only handles the tenant-wide precomputed case. Per-location
@@ -87,14 +105,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ stale: true, reason: "location_filter" });
   }
 
-  const { data: row, error } = await admin
-    .from("tenant_dashboard_stats")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
+  const { data: row, error } = await timing.measure("precomputed_read", async () =>
+    admin
+      .from("tenant_dashboard_stats")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .maybeSingle(),
+  );
 
-  if (error) return NextResponse.json({ stale: true, reason: "precomputed_error" });
-  if (!row) return NextResponse.json({ stale: true, reason: "precomputed_missing" });
+  if (error)
+    return NextResponse.json(
+      { stale: true, reason: "precomputed_error" },
+      { headers: serverTimingHeader(timing) },
+    );
+  if (!row)
+    return NextResponse.json(
+      { stale: true, reason: "precomputed_missing" },
+      { headers: serverTimingHeader(timing) },
+    );
 
   const ageMs = Date.now() - new Date(row.computed_at as string).getTime();
   if (ageMs > PRECOMPUTED_MAX_STALE_MS) {
@@ -161,7 +189,18 @@ export async function GET(req: NextRequest) {
       headers: {
         // Tenant-specific + user-specific data — never cache publicly.
         "Cache-Control": "private, no-store",
+        ...serverTimingHeader(timing),
       },
     },
   );
+}
+
+/**
+ * Stamps the Server-Timing header onto a response unless no metrics
+ * were recorded. Returns an empty object so it can be spread into
+ * Headers init without a separate guard.
+ */
+function serverTimingHeader(timing: ServerTiming): Record<string, string> {
+  const value = timing.toHeader();
+  return value ? { "Server-Timing": value } : {};
 }
