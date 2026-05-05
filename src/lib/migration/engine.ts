@@ -251,6 +251,90 @@ export function normaliseMappingEntry(m: unknown): MappingEntry | null {
   };
 }
 
+/**
+ * Per-entity required-coverage definitions.
+ *
+ * "Required coverage" = at least one of the listed dest fields must
+ * be mapped from a source header for an import to be meaningful. The
+ * row-level checks at insert time use the same OR-of-fields shape
+ * (e.g. customer rows reject only when name AND email AND phone are
+ * all blank), so a CSV with NONE of those columns mapped is going
+ * to error every single row — better to surface this as a column-
+ * level mismatch BEFORE the user clicks Import.
+ *
+ * Audit ID M-12 (desktop-Opus): "Migration CSV column validation."
+ * Pre-fix the only feedback was per-row errors during the actual
+ * import — by which point the user had already paid the upload + map
+ * + click-Preview cost on a CSV that was structurally wrong.
+ */
+export interface RequiredCoverage {
+  /** Human-readable label of the bucket (rendered in UI). */
+  label: string;
+  /** At least one of these dest fields must be mapped. */
+  anyOf: string[];
+}
+
+export const CUSTOMER_REQUIRED_COVERAGE: RequiredCoverage[] = [
+  { label: "Name, email, or phone", anyOf: ["full_name", "first_name", "last_name", "email", "mobile", "phone"] },
+];
+export const INVENTORY_REQUIRED_COVERAGE: RequiredCoverage[] = [
+  { label: "Item name or SKU", anyOf: ["name", "sku"] },
+];
+export const REPAIR_REQUIRED_COVERAGE: RequiredCoverage[] = [
+  { label: "Item description or item type", anyOf: ["item_description", "item_type"] },
+];
+
+export interface ColumnValidationIssue {
+  /** The required-coverage bucket that's not satisfied. */
+  bucket: RequiredCoverage;
+  /** The dest fields the user could map a column to to satisfy this bucket. */
+  unmappedDestOptions: string[];
+}
+
+export interface ColumnValidationResult {
+  /** True iff every required bucket has at least one mapped dest field. */
+  ok: boolean;
+  /** Buckets that are not satisfied (empty when ok=true). */
+  missing: ColumnValidationIssue[];
+}
+
+/**
+ * Validate that an entity import has at least one mapped column for
+ * each required-coverage bucket. Pure function — caller decides
+ * what to render.
+ *
+ * Returns ok=true on `unknown` entity (we can't know what's required)
+ * — caller should still display its own warning that the entity is
+ * not detected.
+ */
+export function validateMappingCoverage(
+  entity: string,
+  mappings: MappingEntry[],
+): ColumnValidationResult {
+  const buckets =
+    entity === "customers" ? CUSTOMER_REQUIRED_COVERAGE
+    : entity === "inventory" ? INVENTORY_REQUIRED_COVERAGE
+    : (entity === "repairs" || entity === "bespoke") ? REPAIR_REQUIRED_COVERAGE
+    : [];
+
+  if (buckets.length === 0) return { ok: true, missing: [] };
+
+  const mappedDests = new Set(
+    mappings
+      .map((m) => m.destinationField)
+      .filter((d): d is string => typeof d === "string" && d.length > 0),
+  );
+
+  const missing: ColumnValidationIssue[] = [];
+  for (const bucket of buckets) {
+    const satisfied = bucket.anyOf.some((d) => mappedDests.has(d));
+    if (!satisfied) {
+      missing.push({ bucket, unmappedDestOptions: bucket.anyOf });
+    }
+  }
+  return { ok: missing.length === 0, missing };
+}
+
 /** Build a mapping config from default patterns for a given set of source headers */
 export function buildDefaultMappings(headers: string[], patterns: PatternMap[]): MappingEntry[] {
   const result: MappingEntry[] = [];
