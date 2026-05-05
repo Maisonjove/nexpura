@@ -1054,3 +1054,99 @@ which is the right shape — but the re-export was added as a
 backwards-compatibility convenience for callers, and that convenience
 is what tripped the bundler. **When consolidating sibling files, do
 not leave a re-export shim behind**; update the call sites.
+
+---
+
+## 15. Mocking the contract point hides production failures
+
+When a contract test mocks the value at the boundary it's supposed to
+verify — an HTTP header name, an env var name, the shape a third-party
+API returns — the test passes while production fails because the
+boundary's actual identity differs from the mock. The test isn't
+testing what it claims to test; it's testing the test's own assumption
+about the boundary, and the assumption can be wrong.
+
+### Canonical example — C-06 v1 (PR #157, fixed in commit `5d031c7b`)
+
+The first cut of the deploy-skew detection layer mocked a header name
+in its unit tests:
+
+```ts
+// src/components/__tests__/DeployVersionBanner.test.tsx (v1)
+function makeResponseWithHeader(value: string | null): Response {
+  const headers = new Headers();
+  if (value !== null) headers.set('x-deployment-id', value); // ← assumed
+  return new Response(null, { status: 200, headers });
+}
+
+it('triggers onMismatch when x-deployment-id differs from clientBuildId', async () => {
+  window.fetch = vi.fn().mockResolvedValue(makeResponseWithHeader('build-newdeploy12'));
+  // ...
+});
+```
+
+14/14 unit tests passed. The component shipped to a Vercel preview.
+The mechanism never triggered in production. Verification probe:
+
+```bash
+curl -sI -H "RSC: 1" https://<preview>/login | grep -i deployment
+# x-nextjs-deployment-id: dpl_9L39oEXjGjahfcxAj8viKAd6oENX
+# (no x-deployment-id)
+```
+
+The actual header is `x-nextjs-deployment-id`, carrying Vercel's
+`dpl_xxx` token. The test mocked the contract point — the response
+header — so the component's behavior given that mock was correct, but
+the mock itself was a fiction.
+
+### Detection rule — when writing a test that asserts behavior at a third-party boundary
+
+Ask yourself one question: *am I testing my code's behavior given a
+value, or am I testing that the boundary actually emits that value?*
+
+| Test shape | What it verifies | When it's enough |
+|---|---|---|
+| Unit (mocked boundary) | Code's behavior given a value | When the boundary's identity is well-documented + stable + part of a published public API |
+| Contract (probes real boundary) | Code's behavior AND the boundary emits the expected shape | When the boundary is a third-party surface (Vercel/Next/Stripe/Supabase headers, env vars, response payloads) |
+
+Boundaries that need contract-level coverage in this codebase:
+
+- HTTP response headers from Vercel/Next (e.g. `x-nextjs-deployment-id`,
+  `x-vercel-cache`)
+- Env var names auto-injected by Vercel (e.g. `VERCEL_GIT_COMMIT_SHA`,
+  `NEXT_DEPLOYMENT_ID`)
+- Response shapes from third-party SDKs (Supabase shadow-response
+  signatures — see NEW-01 / PR #191; Stripe webhook event types;
+  Resend send-result codes)
+- Postgres error codes the app branches on
+- File-system layout the SWC bundler keys on (see §14)
+
+### How to probe instead of mock
+
+For HTTP boundaries: capture an actual response from a deployed
+preview (`curl -I` is enough for headers) and pin the header name +
+shape in a fixture file. Test against the fixture; document the date
+and deploy ID the fixture was captured from.
+
+For env boundaries: pin the names in the test, not the values
+(`expect(process.env).toHaveProperty('NEXT_DEPLOYMENT_ID')` proves the
+env var is set, not what it contains).
+
+For SDK shapes: use the SDK's own typed response in your fixture
+(don't hand-roll a plain object whose shape you assumed).
+
+Don't replace unit tests with contract tests — keep both. Unit tests
+are still the cheapest way to cover branching logic. The contract test
+is what catches the assumption error in the unit-test fixtures.
+
+### Cross-references
+
+- §14 — `"use server"` re-export pitfall (caught by `pnpm build`,
+  missed by tsc + vitest; same shape: a test that doesn't run the
+  real boundary's machinery can't see the failure)
+- PR #157 commit `5d031c7b` — the fix for the header-name assumption
+- PR #157 commit `6a71881d` — the original failure shape (kept in
+  history as the canonical reference; see commit body)
+- `src/lib/__tests__/c06-config-contract.test.ts` — the contract test
+  added in `5d031c7b` that probes the actual surface (next.config.ts
+  output + bundle inlining + header name in source)
