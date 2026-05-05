@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "smoke:dashboard": "playwright test e2e/post-deploy-smoke.spec.ts",
     "analyze": "ANALYZE=true next build",
     "check:secrets": "bash scripts/check-secrets.sh --all",
     "install:hooks": "bash scripts/install-git-hooks.sh",
