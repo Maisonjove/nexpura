@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getShopDisplayName } from "@/lib/shop/display-name";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 import RepairEnquiryForm from "./RepairEnquiryForm";
 
 interface Props {
@@ -11,7 +13,13 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const name = await getShopDisplayName(subdomain);
+  // P2-C: HARD CUTOFF on soft-deleted tenants — no business_name leak.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const name =
+    resolved.config.meta_title ||
+    resolved.config.business_name ||
+    (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return { title: `Book a Repair — ${name}` };
 }
 
@@ -25,21 +33,16 @@ export default function RepairEnquiryPageWrapper(props: Props) {
 
 async function RepairEnquiryPage({ params }: Props) {
   const { subdomain } = await params;
-  const supabase = createAdminClient();
 
-  const { data: config } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("subdomain", subdomain)
-    .eq("published", true)
-    .maybeSingle();
-
-  if (!config) notFound();
+  // P2-C: HARD CUTOFF on soft-deleted tenants.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
   const primaryColor = (config.primary_color as string) || "amber-700";
   const font = (config.font as string) || "Inter";
   const businessName = (config.business_name as string) || subdomain;
-  const tenantId = config.tenant_id as string;
+  const tenantId = tenant.id;
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: `'${font}', sans-serif` }}>

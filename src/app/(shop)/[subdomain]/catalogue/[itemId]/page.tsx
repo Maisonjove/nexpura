@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveActiveTenantConfig } from "@/lib/storefront/resolve-active-tenant";
 import ItemEnquiryForm from "./ItemEnquiryForm";
 
 interface Props {
@@ -21,20 +22,16 @@ async function ItemDetailPage({ params }: Props) {
   const { subdomain, itemId } = await params;
   const supabase = createAdminClient();
 
-  const { data: config } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("subdomain", subdomain)
-    .eq("published", true)
-    .maybeSingle();
-
-  if (!config) notFound();
+  // P2-C: HARD CUTOFF on soft-deleted tenants.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
   const { data: item } = await supabase
     .from("inventory")
     .select("*")
     .eq("id", itemId)
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   if (!item) notFound();
@@ -193,7 +190,7 @@ async function ItemDetailPage({ params }: Props) {
               <div className="border-t border-stone-100 pt-6">
                 <ItemEnquiryForm
                   subdomain={subdomain}
-                  tenantId={config.tenant_id}
+                  tenantId={tenant.id}
                   itemName={item.name}
                   primaryColor={primaryColor}
                 />

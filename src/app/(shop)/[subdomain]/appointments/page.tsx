@@ -1,10 +1,11 @@
 import { Suspense } from "react";
-import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getShopDisplayName } from "@/lib/shop/display-name";
 import AppointmentForm from "./AppointmentForm";
 
 /**
@@ -12,21 +13,17 @@ import AppointmentForm from "./AppointmentForm";
  *
  * Same template as /settings/tags: synchronous default export returning
  * a Suspense boundary; all async work (params promise + Supabase read
- * + notFound branch) happens inside the async body component. The
- * loader takes `subdomain` as a parameter, so it's trivially cacheable
- * under CC with `'use cache' + cacheTag("website-config:" + subdomain)`.
+ * + notFound branch) happens inside the async body component.
  *
  * No auth-related cookie reads on this route — it's a public-facing
- * shop page gated only by the `website_config.published = true` flag.
+ * shop page gated only by the `website_config.published = true` flag
+ * AND the `tenants.deleted_at IS NULL` HARD CUTOFF (P2-C, 2026-05-05).
  *
- * TODO(cacheComponents-flag): once the flag is globally on, add inside
- * `loadPublishedConfig`:
- *   'use cache';
- *   cacheLife('minutes');
- *   cacheTag(`website-config:${subdomain}`);
- * And call `revalidateTag(`website-config:${subdomain}`)` from the
- * tenant's website-settings server actions when they publish/unpublish
- * or change branding.
+ * Tenant resolution is centralised in `resolveActiveTenantConfig`
+ * (src/lib/storefront/resolve-active-tenant.ts), which joins
+ * website_config -> tenants and returns null for any soft-deleted
+ * tenant. Changing the policy here means changing it in one place for
+ * all 11 storefront pages + 7 generateMetadata exporters.
  */
 
 interface PageProps {
@@ -35,7 +32,13 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { subdomain } = await params;
-  const name = await getShopDisplayName(subdomain);
+  // P2-C: HARD CUTOFF on soft-deleted tenants — no business_name leak.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const name =
+    resolved.config.meta_title ||
+    resolved.config.business_name ||
+    (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return { title: `Book an Appointment — ${name}` };
 }
 
@@ -49,17 +52,19 @@ export default function AppointmentPage({ params }: PageProps) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Dynamic body. Awaits the params promise, loads the published website
-// config for the subdomain, and either 404s or renders the shell.
+// config + non-deleted tenant for the subdomain, and either 404s or
+// renders the shell.
 // ─────────────────────────────────────────────────────────────────────────
 async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ subdomain: string }> }) {
   const { subdomain } = await paramsPromise;
-  const config = await loadPublishedConfig(subdomain);
-  if (!config) notFound();
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
   const primaryColor = (config.primary_color as string) || "amber-700";
   const font = (config.font as string) || "Inter";
   const businessName = (config.business_name as string) || subdomain;
-  const tenantId = config.tenant_id as string;
+  const tenantId = tenant.id;
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: `'${font}', sans-serif` }}>
@@ -92,33 +97,6 @@ async function AppointmentBody({ paramsPromise }: { paramsPromise: Promise<{ sub
       </div>
     </div>
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Cacheable per subdomain. Published website config only — if the shop
-// isn't published the result is null and the body 404s.
-// ─────────────────────────────────────────────────────────────────────────
-interface WebsiteConfig {
-  subdomain: string;
-  primary_color: string | null;
-  font: string | null;
-  business_name: string | null;
-  tenant_id: string;
-  published: boolean;
-}
-
-async function loadPublishedConfig(subdomain: string): Promise<WebsiteConfig | null> {
-  "use cache";
-  cacheLife("minutes");
-  cacheTag(`website-config:${subdomain}`);
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("subdomain", subdomain)
-    .eq("published", true)
-    .maybeSingle();
-  return (data as WebsiteConfig | null) ?? null;
 }
 
 function AppointmentSkeleton() {

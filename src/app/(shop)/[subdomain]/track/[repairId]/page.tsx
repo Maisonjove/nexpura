@@ -1,5 +1,9 @@
 import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -43,13 +47,10 @@ const STAGE_LABELS: Record<string, string> = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const admin = createAdminClient();
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-  const name = (config?.business_name as string) || "Store";
+  // P2-C: HARD CUTOFF on soft-deleted tenants — no business_name leak.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const name = resolved.config.business_name || "Store";
   return { title: `Repair Status — ${name}` };
 }
 
@@ -122,19 +123,22 @@ async function RepairTrackingPage({ params }: Props) {
   const { subdomain, repairId } = await params;
   const admin = createAdminClient();
 
-  // Get store config
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name, primary_color, font, tenant_id, phone, email, address")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
+  // P2-C: HARD CUTOFF on soft-deleted tenants.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
-  if (!config) notFound();
-
-  const primaryColor = (config?.primary_color as string) || "#b45309";
-  const font = (config?.font as string) || "Inter";
-  const businessName = (config?.business_name as string) || subdomain;
-  const tenantId = config?.tenant_id as string;
+  const primaryColor = (config.primary_color as string) || "#b45309";
+  const font = (config.font as string) || "Inter";
+  const businessName = (config.business_name as string) || subdomain;
+  const tenantId = tenant.id;
+  // The original page selected `phone, email, address` from website_config —
+  // those columns don't exist on that table (verified 2026-05-05); the real
+  // fields are `contact_phone`, `contact_email`, `contact_address`. Pre-fix
+  // the contact card was always empty. Read the correct columns now.
+  const storePhone = (config.contact_phone as string | null) ?? null;
+  const storeEmail = (config.contact_email as string | null) ?? null;
+  const storeAddress = (config.contact_address as string | null) ?? null;
 
   // Fetch repair. Pre-fix selected `notes` (column doesn't exist on
   // repairs — verified 2026-04-25; real column is `internal_notes`)
@@ -309,19 +313,19 @@ async function RepairTrackingPage({ params }: Props) {
               <p className="text-xs font-semibold text-stone-400 uppercase tracking-widest mb-3">Questions?</p>
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-stone-900">{businessName}</p>
-                {config?.phone && (
-                  <a href={`tel:${config.phone}`} className="flex items-center gap-2 text-sm text-amber-700 hover:underline">
-                    <Phone size={14} /> {config.phone as string}
+                {storePhone && (
+                  <a href={`tel:${storePhone}`} className="flex items-center gap-2 text-sm text-amber-700 hover:underline">
+                    <Phone size={14} /> {storePhone}
                   </a>
                 )}
-                {config?.email && (
-                  <a href={`mailto:${config.email}`} className="flex items-center gap-2 text-sm text-amber-700 hover:underline">
-                    <Mail size={14} /> {config.email as string}
+                {storeEmail && (
+                  <a href={`mailto:${storeEmail}`} className="flex items-center gap-2 text-sm text-amber-700 hover:underline">
+                    <Mail size={14} /> {storeEmail}
                   </a>
                 )}
-                {config?.address && (
+                {storeAddress && (
                   <p className="flex items-start gap-2 text-sm text-stone-500">
-                    <MapPin size={14} className="flex-shrink-0 mt-0.5" /> {config.address as string}
+                    <MapPin size={14} className="flex-shrink-0 mt-0.5" /> {storeAddress}
                   </p>
                 )}
               </div>

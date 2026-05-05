@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 import type { Metadata } from "next";
 import { SectionRenderer } from "@/components/website/SectionRenderer";
 import {
@@ -39,20 +44,19 @@ export default function ShopHomePageWrapper(props: Props) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const supabase = createAdminClient();
-  const { data: config } = await supabase
-    .from("website_config")
-    .select("business_name, meta_title, meta_description")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-
+  // P2-C: never leak business_name / meta_title for soft-deleted or
+  // never-existed tenants. notFoundMetadata() returns a sterile payload with
+  // robots=noindex so crawlers can't latch onto a deleted tenant's page.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const { config } = resolved;
   const displayName =
-    (config?.meta_title as string | null) ||
-    (config?.business_name as string | null) ||
+    config.meta_title ||
+    config.business_name ||
     (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return {
     title: displayName,
-    description: config?.meta_description || undefined,
+    description: config.meta_description || undefined,
   };
 }
 
@@ -61,51 +65,31 @@ async function ShopHomePage({ params, searchParams }: Props) {
   const { preview } = await searchParams;
   const supabase = createAdminClient();
 
-  // Fetch website config — allow unpublished for preview mode
-  let query = supabase
-    .from("website_config")
-    .select("*")
-    .eq("subdomain", subdomain);
-
-  if (!preview) {
-    query = query.eq("published", true);
-  }
-
-  let { data: config } = await query.maybeSingle();
-
-  // If not found by subdomain in preview mode, fall back to tenant_id lookup
-  if (!config && preview) {
+  // P2-C: resolve tenant via the centralised helper. Soft-deleted tenants
+  // are HARD-cut here — no preview override, no metadata leak.
+  let userId: string | undefined;
+  if (preview) {
     try {
-      const { createClient } = await import("@/lib/supabase/server");
       const userClient = await createClient();
       const { data: { user } } = await userClient.auth.getUser();
-      if (user) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("tenant_id")
-          .eq("id", user.id)
-          .single();
-        if (userData?.tenant_id) {
-          const { data: tenantConfig } = await supabase
-            .from("website_config")
-            .select("*")
-            .eq("tenant_id", userData.tenant_id)
-            .maybeSingle();
-          if (tenantConfig) config = tenantConfig;
-        }
-      }
+      userId = user?.id;
     } catch {
-      // Fallback silently — user might not be authenticated
+      // not signed in — preview won't authorise
     }
   }
 
-  if (!config) notFound();
+  const resolved = await resolveActiveTenantConfig(subdomain, {
+    preview: Boolean(preview),
+    userId,
+  });
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
   // Fetch featured inventory — use real column names
   const { data: items } = await supabase
     .from("inventory")
     .select("id, name, primary_image, metal_type, stone_type, retail_price, description")
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .eq("is_published", true)
     .gt("quantity", 0)
@@ -128,7 +112,7 @@ async function ShopHomePage({ params, searchParams }: Props) {
   const homePageQuery = supabase
     .from("site_pages")
     .select("id, title, meta_title, meta_description, page_type, published")
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .eq("page_type", "home");
 
   const { data: homePage } = preview
@@ -140,7 +124,7 @@ async function ShopHomePage({ params, searchParams }: Props) {
       .from("site_sections")
       .select("section_type, display_order, content, styles")
       .eq("page_id", homePage.id)
-      .eq("tenant_id", config.tenant_id)
+      .eq("tenant_id", tenant.id)
       .order("display_order", { ascending: true });
 
     if (sections && sections.length > 0) {
@@ -148,7 +132,7 @@ async function ShopHomePage({ params, searchParams }: Props) {
       const { data: navPages } = await supabase
         .from("site_pages")
         .select("slug, title, page_type")
-        .eq("tenant_id", config.tenant_id)
+        .eq("tenant_id", tenant.id)
         .eq("published", true)
         .neq("page_type", "home")
         .order("created_at", { ascending: true });

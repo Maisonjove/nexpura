@@ -1,7 +1,10 @@
 import { Suspense } from "react";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getShopDisplayName } from "@/lib/shop/display-name";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 import TrackRepairClient from "./TrackRepairClient";
 
 interface Props {
@@ -18,23 +21,30 @@ export default function TrackRepairPageWrapper(props: Props) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const name = await getShopDisplayName(subdomain);
+  // P2-C: HARD CUTOFF on soft-deleted tenants — no business_name leak.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const name =
+    resolved.config.meta_title ||
+    resolved.config.business_name ||
+    (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return { title: `Track Your Repair — ${name}` };
 }
 
 async function TrackRepairPage({ params }: Props) {
   const { subdomain } = await params;
-  const admin = createAdminClient();
 
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name, primary_color, font, tenant_id")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
+  // P2-C: HARD CUTOFF on soft-deleted tenants. The previous implementation
+  // rendered the page with fallback values even when no tenant matched —
+  // attackers could probe arbitrary subdomains and the tracker would
+  // happily render. Now we 404 cleanly.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config } = resolved;
 
-  const primaryColor = (config?.primary_color as string) || "amber-700";
-  const font = (config?.font as string) || "Inter";
-  const businessName = (config?.business_name as string) || subdomain;
+  const primaryColor = (config.primary_color as string) || "amber-700";
+  const font = (config.font as string) || "Inter";
+  const businessName = (config.business_name as string) || subdomain;
 
   return (
     <div className="min-h-screen bg-stone-50" style={{ fontFamily: `'${font}', sans-serif` }}>

@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getShopDisplayName } from "@/lib/shop/display-name";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 import EnquiryForm from "./EnquiryForm";
 
 interface Props {
@@ -14,7 +16,13 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const name = await getShopDisplayName(subdomain);
+  // P2-C: HARD CUTOFF on soft-deleted tenants — no business_name leak.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const name =
+    resolved.config.meta_title ||
+    resolved.config.business_name ||
+    (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return { title: `Contact — ${name}` };
 }
 
@@ -29,16 +37,11 @@ export default function EnquiryPageWrapper(props: Props) {
 async function EnquiryPage({ params, searchParams }: Props) {
   const { subdomain } = await params;
   const { item } = await searchParams;
-  const supabase = createAdminClient();
 
-  const { data: config } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("subdomain", subdomain)
-    .eq("published", true)
-    .maybeSingle();
-
-  if (!config) notFound();
+  // P2-C: HARD CUTOFF on soft-deleted tenants.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
   const primaryColor = config.primary_color || "amber-700";
   const secondaryColor = config.secondary_color || "#1A1A1A";
@@ -86,7 +89,7 @@ async function EnquiryPage({ params, searchParams }: Props) {
         <div className="bg-white border border-stone-200 rounded-2xl p-8 shadow-sm">
           <EnquiryForm
             subdomain={subdomain}
-            tenantId={config.tenant_id}
+            tenantId={tenant.id}
             defaultItem={item}
             primaryColor={primaryColor}
             contactEmail={config.contact_email}
