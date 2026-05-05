@@ -427,11 +427,25 @@ export async function convertQuoteToSale(quoteId: string): Promise<{ id?: string
     locationId = firstLoc?.id ?? null;
   }
 
+  // M-02 (desktop-Opus): pre-fix the conversion dereferenced the
+  // customer to name+email strings (lines below) but DROPPED the
+  // customer_id link. Result: the new sale appeared in /sales with
+  // the right name copy but `customer_id IS NULL`, so the customer's
+  // history page didn't list this sale, and downstream features
+  // (LTV totals, repeat-customer flag, refund-by-customer) silently
+  // missed it. Fix: carry customer_id from the quote row through to
+  // the sale insert. The name/email copy stays — those are
+  // denormalised for receipts and don't break if the customer is
+  // later renamed/deleted.
+  const customerId =
+    (fullQuote as { customer_id?: string | null }).customer_id ?? null;
+
   const { data: sale, error: saleError } = await supabase
     .from("sales")
     .insert({
       tenant_id: ctx.tenantId,
       sale_number: saleNumber,
+      customer_id: customerId,
       customer_name: (fullQuote.customers as { full_name?: string } | null)?.full_name ?? null,
       customer_email: (fullQuote.customers as { email?: string } | null)?.email ?? null,
       status: "quote",
