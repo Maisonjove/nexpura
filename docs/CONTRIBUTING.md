@@ -957,15 +957,23 @@ gates, etc.).
 
 ---
 
-## 14. Server-action re-exports break the SWC bundler
+## 14. "Use server" files: only async functions allowed
 
-A bare `export { x } from "y"` re-export inside a `"use server"` file
-will silently break **every** export from that file at build time.
-Not just the re-exported symbol — *all* local exports become invisible
-to the bundler. The local TypeScript compiler and Vitest contract
-tests do not catch it; only an actual Next.js production build does.
+Files with a `"use server"` directive at the top are restricted by
+Next.js's SWC server-action transform: **only directly-defined async
+functions may be exported.** Anything else — a re-export, a
+non-async function, a const/let/var, a class, a default-export of a
+non-async value — silently breaks **every** export from that file at
+build time. Not just the offending symbol; all local async exports
+become invisible to the bundler too.
 
-### The pattern that fails
+The local TypeScript compiler and Vitest contract tests do not catch
+this — both shapes are valid TypeScript and contract tests grep
+source. Only an actual Next.js production build does.
+
+### Two failure shapes (canonical incidents)
+
+#### Shape A — re-export (PR #187, fixed by commit `fbd2d0c0`)
 
 ```ts
 // src/app/(app)/settings/team/actions.ts
@@ -992,10 +1000,37 @@ Build error from Vercel:
 > (It doesn't have dynamic exports). So it's known statically that
 > the requested export doesn't exist.
 
-### The pattern that works
+#### Shape B — non-async const (PR #161, fixed by commit `99d02d4b` / hotfix #195)
 
-Drop the re-export. Have consumers import directly from the canonical
-file:
+```ts
+// src/app/(app)/sales/sales-actions.ts
+"use server";
+
+// 👇 const exports trigger the same cascade.
+export const SALES_LIST_PAGE_SIZE = 50;
+
+export async function getSalesPage(...) { ... }   // ← invisible
+export async function getSales(...) { ... }       // ← invisible
+```
+
+Build error from Vercel:
+
+> `./src/app/(app)/sales/sales-actions.ts:73:1`
+> `Only async functions are allowed to be exported in a "use server" file.`
+>
+> Followed by the same downstream "module has no exports at all"
+> cascade across every consumer of `getSales`, `getSalesPage`, and
+> the `SaleWithLocation` type.
+
+The two shapes share the same root cause — anything other than
+`export async function` poisons the entire module — but they emit
+different first-line errors, which is why the rule was first cut
+narrow (re-exports only) and extended after Shape B caught us.
+
+### The patterns that work
+
+For Shape A (re-export): drop the re-export, have consumers import
+directly from the canonical file.
 
 ```ts
 // src/app/(app)/settings/team/actions.ts — no re-export, only locals
@@ -1017,14 +1052,52 @@ import {
 import { inviteTeamMember } from "../roles/actions";
 ```
 
+For Shape B (non-async export): extract to a sibling types/constants
+file with NO `"use server"` directive. Type-only re-exports back into
+the action file are bundler-safe (the lint rule explicitly exempts
+them) so callers that import types from the action file keep working.
+
+```ts
+// src/app/(app)/sales/sales-types.ts — no "use server"; non-async exports OK
+export const SALES_LIST_PAGE_SIZE = 50;
+export interface SaleWithLocation { /* ... */ }
+```
+
+```ts
+// src/app/(app)/sales/sales-actions.ts
+"use server";
+import { SALES_LIST_PAGE_SIZE } from "./sales-types";
+// Type-only re-export (allowed; the lint rule exempts type-only).
+export type { SaleWithLocation } from "./sales-types";
+export async function getSalesPage(...) { ... }
+```
+
+### Allowed shapes inside a `"use server"` file
+
+| Shape | Allowed? | Notes |
+|---|---|---|
+| `export async function x(...)` | ✅ | The canonical pattern |
+| `export type { T } from "y"` | ✅ | Type-only re-export — erased before bundling |
+| `export type X = ...` | ✅ | Type alias — erased |
+| `export interface X { ... }` | ✅ | Interface — erased |
+| `export { x } from "y"` | ❌ | Re-export (Shape A) |
+| `export * from "y"` | ❌ | Star re-export |
+| `export const X = ...` | ❌ | Non-async const (Shape B) |
+| `export let X = ...` | ❌ | Non-async let |
+| `export var X = ...` | ❌ | Non-async var |
+| `export function x(...)` | ❌ | Non-async function |
+| `export class X {}` | ❌ | Class |
+| `export default X` | ❌ | Non-async-function default |
+| `export default async function ...` | ✅ | The async-default exception |
+
 ### Why local checks don't catch this
 
 | Tool | Sees the bug? | Why |
 |---|---|---|
-| `pnpm tsc --noEmit` | ❌ no | Re-exports are valid TypeScript. tsc resolves the symbol type and stops there. |
-| `pnpm vitest run` | ❌ no | Contract tests grep source text; they don't run the SWC server-action transform. |
-| `pnpm exec eslint` (`local/no-server-action-reexport`) | ✅ yes | Custom rule fires at lint time on `export {x} from "y"` in any `"use server"` file. Locked at `error` severity. |
-| `pnpm build` (locally) | ✅ yes | The Next.js production build runs the SWC server-action transform. |
+| `pnpm tsc --noEmit` | ❌ no | Both shapes are valid TypeScript. |
+| `pnpm vitest run` | ❌ no | Contract tests grep source. |
+| `pnpm exec eslint` (`local/no-server-action-reexport`) | ✅ yes | Custom rule covers all forbidden shapes. Locked at `error` severity. |
+| `pnpm build` (locally) | ✅ yes | The Next.js production build runs the SWC transform. |
 | Vercel deploy | ✅ yes | Same as `pnpm build`. |
 
 The lint rule is the cheapest gate — you don't need a full local
@@ -1038,13 +1111,26 @@ file's export shape (especially adding/removing re-exports), run a
 local `pnpm build` once before pushing, or accept that the Vercel
 preview is the verifier.
 
-### Canonical reference
+### Canonical references
 
-- **PR #187** (`post-audit/h04-invite-consolidation`) introduced the
-  re-export when consolidating `inviteTeamMember`. tsc + Vitest were
-  green; Vercel preview deploy failed. Commit `fbd2d0c0` reverted the
-  re-export and switched the consumer to a direct import; deploy
-  cleared on the next commit.
+- **Shape A — PR #187** (`post-audit/h04-invite-consolidation`).
+  Introduced the re-export when consolidating `inviteTeamMember`.
+  tsc + Vitest were green; Vercel preview deploy failed. Commit
+  `fbd2d0c0` reverted the re-export and switched the consumer to a
+  direct import; deploy cleared on the next commit.
+
+- **Shape B — PR #161 → wave-2 hotfix #195** (`post-audit/sales-actions-server-violation`).
+  PR #161 (UX hygiene /sales) inlined `export const SALES_LIST_PAGE_SIZE = 50`
+  at the top of `sales-actions.ts`. Wave 2 of the post-audit merge
+  cadence merged it cleanly (tsc + Vitest still green) but the prod
+  deploy ERRORed with "Only async functions are allowed to be exported
+  in a 'use server' file" plus 5 cascade errors. Hotfix #195
+  (commit `99d02d4b`) extracted the const + types to a sibling
+  `sales-types.ts` file. After this incident the
+  `local/no-server-action-reexport` rule was extended to cover all
+  non-async export shapes; the proactive grep across all 70+
+  `"use server"` files in the codebase confirmed zero remaining
+  violations.
 
 ### Why this is a half-fix-pair (§13) signal too
 
