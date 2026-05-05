@@ -168,9 +168,52 @@ export default function InviteClient({ token, invite }: Props) {
       },
     });
 
+    // NEW-01: Detect Supabase's enumeration-protection "shadow response".
+    // When the email is already registered in auth.users, Supabase returns
+    // success with a populated `data.user` whose `identities` array is
+    // empty — and no confirmation email is sent, password silently dropped.
+    // We detect that signature and route the user to /login instead of
+    // pretending an email is on its way.
+    // Ref: https://supabase.com/docs/reference/javascript/auth-signup
+    if (
+      !signUpError &&
+      authData?.user &&
+      Array.isArray(authData.user.identities) &&
+      authData.user.identities.length === 0
+    ) {
+      // Login page consumes `nexpura_redirect_after_login` from
+      // sessionStorage as the post-login destination; we also pass
+      // `?redirectTo=/invite/${token}` in the URL so it's visible/
+      // shareable and survives intermediate hops.
+      try {
+        sessionStorage.setItem(
+          "nexpura_redirect_after_login",
+          `/invite/${token}`
+        );
+      } catch {
+        // sessionStorage can be unavailable in private modes; ignore.
+      }
+      setError(
+        "This email already has a Nexpura account. Sign in to accept the invitation."
+      );
+      router.push(`/login?redirectTo=/invite/${token}`);
+      return;
+    }
+
     if (signUpError) {
+      // Fallback: some Supabase versions DO surface a thrown error for
+      // already-registered emails instead of the shadow response above.
       if (signUpError.message.includes("already registered")) {
+        try {
+          sessionStorage.setItem(
+            "nexpura_redirect_after_login",
+            `/invite/${token}`
+          );
+        } catch {
+          // ignore
+        }
         setError("An account with this email already exists. Please log in instead.");
+        router.push(`/login?redirectTo=/invite/${token}`);
       } else {
         setError(signUpError.message);
       }
