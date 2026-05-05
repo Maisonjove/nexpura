@@ -16,6 +16,7 @@
 // full body), so this is additive — no API change required.
 // ============================================
 
+import React from 'react'
 import Link from 'next/link'
 import { Suspense, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -53,6 +54,69 @@ const DEMO_STEPS: string[] = [
   'You see repairs, bespoke, POS, inventory, and passports in action',
   'We discuss migration and setup options',
   'You get clear next steps, with no pressure',
+]
+
+type TrustItem = { label: string; sub: string; icon: React.ReactNode }
+
+const TRUST_ITEMS: TrustItem[] = [
+  {
+    label: '14-day free trial',
+    sub: 'No credit card required',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+        <path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2Z" />
+        <path d="M10 6v4l2.5 2.5" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Cancel anytime',
+    sub: 'No lock-in contracts',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+        <path d="M5 10h10M3 6l7-4 7 4v8l-7 4-7-4V6Z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Data encrypted',
+    sub: 'Secure & backed up daily',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+        <path d="M10 2 3.5 5.5v4C3.5 13.1 6.3 16.6 10 18c3.7-1.4 6.5-4.9 6.5-8.5v-4L10 2Z" />
+        <path d="m7.5 10 1.5 1.5 3-3" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Guided migration',
+    sub: 'We help you move your data',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+        <path d="M17 10H3M12 5l5 5-5 5" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Built for jewellers',
+    sub: 'Repairs, bespoke, passports & POS',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+        <path d="m10 2 2.4 4.8 5.3.8-3.85 3.75.9 5.3L10 14.1l-4.75 2.55.9-5.3L2.3 7.6l5.3-.8L10 2Z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Your data stays yours',
+    sub: 'Never shared, never sold',
+    icon: (
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+        <circle cx="10" cy="8" r="3" />
+        <path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+        <path d="M13 3.5 15 5.5M7 3.5 5 5.5" />
+      </svg>
+    ),
+  },
 ]
 
 function ContactClientInner() {
@@ -354,6 +418,35 @@ function ContactClientInner() {
                 <span aria-hidden>→</span>
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* === Trust strip ============================================= */}
+      <section className="border-t border-m-border-soft py-10">
+        <div className={CONTAINER.wide}>
+          <div className="flex flex-wrap justify-center gap-x-10 gap-y-5">
+            {TRUST_ITEMS.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center gap-2.5 text-m-text-secondary"
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-[#F1E9D8] border border-[#E4DBC9] flex items-center justify-center text-[#7A7167]"
+                >
+                  {item.icon}
+                </span>
+                <div>
+                  <p className="font-sans text-[0.88rem] font-semibold text-m-charcoal leading-[1.2]">
+                    {item.label}
+                  </p>
+                  <p className="font-sans text-[0.78rem] text-m-text-muted leading-[1.3]">
+                    {item.sub}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
