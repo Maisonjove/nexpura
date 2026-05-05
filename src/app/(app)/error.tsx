@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import Link from "next/link";
 
@@ -13,6 +14,10 @@ export default function AppError({
   useEffect(() => {
     // Log error to monitoring service
     console.error("[App Error]", error);
+    // Defense-in-depth — global-error.tsx also captures, but a useEffect
+    // race can miss the flush before the page nav unmounts the boundary.
+    // Capturing here at the segment level ensures the event lands.
+    Sentry.captureException(error);
   }, [error]);
 
   return (
