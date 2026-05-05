@@ -30,7 +30,8 @@ export type RateLimitType =
   | "webhook"
   | "heavy"
   | "pdf"
-  | "export";
+  | "export"
+  | "shop-anon";
 
 interface BucketConfig {
   limit: number;
@@ -38,6 +39,15 @@ interface BucketConfig {
 }
 
 // Keep parity with the previous Upstash slidingWindow(N, "60 s") configs.
+//
+// `shop-anon` (P3 Probe 5, 2026-05-05): tighter anti-spam bucket for the
+// public /api/shop/[subdomain]/* routes (enquiry, repair-enquiry, appointment,
+// repair-track). 10/min/IP per-route — see callers, which key by
+// `${ip}:${route}` so an attacker spamming repair-track cannot burn the
+// enquiry quota for the same IP. 10/min/IP matches the auth bucket — anon
+// submissions shouldn't be more permissive than authenticated logins.
+// Pre-fix these shared the 100/min `api` bucket, which left the public
+// surface 10x looser than the rest of the auth-touching app.
 const BUCKETS: Record<RateLimitType, BucketConfig> = {
   api: { limit: 100, windowSeconds: 60 },
   auth: { limit: 10, windowSeconds: 60 },
@@ -46,6 +56,7 @@ const BUCKETS: Record<RateLimitType, BucketConfig> = {
   heavy: { limit: 5, windowSeconds: 60 },
   pdf: { limit: 10, windowSeconds: 60 },
   export: { limit: 3, windowSeconds: 60 },
+  "shop-anon": { limit: 10, windowSeconds: 60 },
 };
 
 // Types mirror the previous API so the 120+ call sites don't need changes.
@@ -122,6 +133,7 @@ export const rateLimiters: Record<RateLimitType, { limit: (id: string) => Promis
   heavy: { limit: (id: string) => checkRateLimit(id, "heavy") },
   pdf: { limit: (id: string) => checkRateLimit(id, "pdf") },
   export: { limit: (id: string) => checkRateLimit(id, "export") },
+  "shop-anon": { limit: (id: string) => checkRateLimit(id, "shop-anon") },
 };
 
 export const ratelimit = rateLimiters.api;

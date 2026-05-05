@@ -4,7 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getShopDisplayName } from "@/lib/shop/display-name";
+import {
+  resolveActiveTenantConfig,
+  notFoundMetadata,
+} from "@/lib/storefront/resolve-active-tenant";
 
 interface Props {
   params: Promise<{ subdomain: string }>;
@@ -13,7 +16,13 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
-  const name = await getShopDisplayName(subdomain);
+  // P2-C: don't leak business_name to crawlers for soft-deleted tenants.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) return notFoundMetadata();
+  const name =
+    resolved.config.meta_title ||
+    resolved.config.business_name ||
+    (subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
   return { title: `Catalogue — ${name}` };
 }
 
@@ -30,14 +39,10 @@ async function CataloguePage({ params, searchParams }: Props) {
   const { category, metal, stone } = await searchParams;
   const supabase = createAdminClient();
 
-  const { data: config } = await supabase
-    .from("website_config")
-    .select("*")
-    .eq("subdomain", subdomain)
-    .eq("published", true)
-    .maybeSingle();
-
-  if (!config) notFound();
+  // P2-C: HARD CUTOFF on soft-deleted tenants. notFound() instead of leaking.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) notFound();
+  const { config, tenant } = resolved;
 
   const primaryColor = config.primary_color || "amber-700";
   const secondaryColor = config.secondary_color || "#1A1A1A";
@@ -47,7 +52,7 @@ async function CataloguePage({ params, searchParams }: Props) {
   let query = supabase
     .from("inventory")
     .select("id, name, primary_image, images, metal_type, stone_type, retail_price, category, description, sku")
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .eq("is_published", true)
     .gt("quantity", 0)
@@ -63,21 +68,21 @@ async function CataloguePage({ params, searchParams }: Props) {
   const { data: categories } = await supabase
     .from("inventory")
     .select("category")
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .not("category", "is", null);
 
   const { data: metals } = await supabase
     .from("inventory")
     .select("metal_type")
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .not("metal_type", "is", null);
 
   const { data: stones } = await supabase
     .from("inventory")
     .select("stone_type")
-    .eq("tenant_id", config.tenant_id)
+    .eq("tenant_id", tenant.id)
     .eq("status", "active")
     .not("stone_type", "is", null);
 

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveActiveTenantConfig } from "@/lib/storefront/resolve-active-tenant";
 
 export const metadata = { title: "Appointment Confirmed" };
 
@@ -114,23 +115,21 @@ async function loadStoreContact(subdomain: string): Promise<{
   storeEmail: string | null;
   storeName: string | null;
 }> {
-  const admin = createAdminClient();
-  const { data: config } = await admin
-    .from("website_config")
-    .select("business_name, tenant_id")
-    .eq("subdomain", subdomain)
-    .maybeSingle();
-  if (!config?.tenant_id) {
+  // P2-C: HARD CUTOFF on soft-deleted tenants — return blank contact info
+  // rather than leaking the deleted tenant's name/phone/email.
+  const resolved = await resolveActiveTenantConfig(subdomain);
+  if (!resolved) {
     return { storePhone: null, storeEmail: null, storeName: null };
   }
-  const { data: tenant } = await admin
+  const admin = createAdminClient();
+  const { data: tenantContact } = await admin
     .from("tenants")
     .select("phone, email")
-    .eq("id", config.tenant_id)
+    .eq("id", resolved.tenant.id)
     .maybeSingle();
   return {
-    storePhone: (tenant?.phone as string | null) ?? null,
-    storeEmail: (tenant?.email as string | null) ?? null,
-    storeName: (config.business_name as string | null) ?? null,
+    storePhone: (tenantContact?.phone as string | null) ?? null,
+    storeEmail: (tenantContact?.email as string | null) ?? null,
+    storeName: resolved.config.business_name ?? null,
   };
 }

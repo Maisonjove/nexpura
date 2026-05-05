@@ -20,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ subdomain: string }> }
 ) {
   const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-  const { success } = await checkRateLimit(ip, "api");
+  const { success } = await checkRateLimit(`${ip}:repair-track`, "shop-anon");
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
