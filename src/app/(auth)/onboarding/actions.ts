@@ -6,6 +6,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { initDefaultPermissions } from "@/lib/permissions";
 import logger from "@/lib/logger";
 import { invalidateUserCache } from "@/lib/cached-auth";
+import { ensureOwnerTeamMembership } from "@/lib/owner-team-membership";
 
 import { flushSentry } from "@/lib/sentry-flush";
 // ============================================================================
@@ -93,7 +94,30 @@ export async function completeOnboarding(
           error: "Session mismatch detected. Please sign in again.",
         };
       }
-      // Already onboarded -- return slug so client can navigate
+      // Already onboarded -- return slug so client can navigate.
+      // Self-heal: if a previous onboarding completed before this PR
+      // landed, the team_members row may still be missing. The helper
+      // is idempotent — no-op when the row already exists.
+      try {
+        await ensureOwnerTeamMembership(adminCheck, {
+          tenantId: existingUser.tenant_id,
+          userId: user.id,
+          email: user.email ?? existingUser.email ?? "",
+          role: "owner",
+          sourceMarker: "onboarding_existing_user_selfheal_2026_05_05",
+        });
+      } catch (err) {
+        // Non-fatal on the already-onboarded path: a missing row is
+        // recovered by getUserLocationIds' role-based fallback. Log
+        // so we can see how often the self-heal fires + flush before
+        // we exit so the Lambda freeze doesn't drop the breadcrumb.
+        logger.error("[onboarding] self-heal team_members write failed", {
+          tenantId: existingUser.tenant_id,
+          userId: user.id,
+          err,
+        });
+        await flushSentry();
+      }
       const { data: tenant } = await adminCheck
         .from("tenants")
         .select("slug")
@@ -146,6 +170,25 @@ export async function completeOnboarding(
         if (linkUserErr) {
           throw new Error(`onboarding: users upsert (link to Stripe-paid tenant) failed: ${linkUserErr.message}`);
         }
+
+        // C-02 fix (2026-05-05): write the team_members row for the
+        // owner before any further state mutates. Without this, every
+        // location-scoped read on the new tenant collapses to an
+        // impossible-UUID filter — the bug audit C-02 caught.
+        // Idempotent helper, so a retried onboarding is safe.
+        // Throw policy: same as the user upsert above. If we got here
+        // the user→tenant link succeeded but the membership row
+        // didn't, leaving the user one query away from being treated
+        // as zero-allow-list on every read. The locations.ts fallback
+        // covers this case, but writing the row is the durable fix.
+        await ensureOwnerTeamMembership(adminClient, {
+          tenantId: stripePaidTenant.id,
+          userId: user.id,
+          email: user.email ?? "",
+          role: "owner",
+          sourceMarker: "onboarding_stripe_paid_link_2026_05_05",
+        });
+
         // Policy: destructive THROW (ghost-tenant prevention). The user
         // is now linked to the tenant, but if this update fails the
         // tenant still has whatever placeholder name the webhook wrote
@@ -231,6 +274,45 @@ export async function completeOnboarding(
       return { error: userErr.message };
     }
 
+    // 2.5. Insert the owner team_members row (C-02 fix, 2026-05-05).
+    // This is the step that was missing pre-fix. Position: AFTER
+    // users.upsert success and BEFORE subscriptions.insert. Same
+    // destructive-rollback semantics as the surrounding steps.
+    try {
+      await ensureOwnerTeamMembership(adminClient, {
+        tenantId: tenant.id,
+        userId: user.id,
+        email: user.email ?? "",
+        role: "owner",
+        sourceMarker: "onboarding_pre_stripe_create_2026_05_05",
+      });
+    } catch (tmErr) {
+      logger.error("Team member (owner) creation error:", tmErr);
+      // Policy: destructive THROW (ghost-tenant prevention). Mirror
+      // the subscriptions-failure rollback below — delete user + tenant
+      // so the user can retry. The locations.ts fallback masks this
+      // case at read-time (so the tenant isn't completely broken even
+      // if the row is missing), but consistency with the rest of the
+      // onboarding chain wins: if any step fails, all earlier inserts
+      // unwind. Half-state accounts are the worst outcome.
+      const { error: userRollbackErr } = await adminClient
+        .from("users")
+        .delete()
+        .eq("id", user.id);
+      if (userRollbackErr) {
+        throw new Error(`onboarding: users rollback delete (after team_members insert failure) failed: ${userRollbackErr.message}; original team_members error: ${(tmErr as Error).message}`);
+      }
+      const { error: tenantRollbackErr } = await adminClient
+        .from("tenants")
+        .delete()
+        .eq("id", tenant.id);
+      if (tenantRollbackErr) {
+        throw new Error(`onboarding: tenants rollback delete (after team_members insert failure) failed: ${tenantRollbackErr.message}; original team_members error: ${(tmErr as Error).message}`);
+      }
+      await flushSentry();
+      return { error: "Failed to create owner membership" };
+    }
+
     // 3. Insert subscription (14-day trial)
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 14);
@@ -247,14 +329,22 @@ export async function completeOnboarding(
     if (subErr) {
       logger.error("Subscription creation error:", subErr);
       // Policy: destructive THROW (ghost-tenant prevention). Subscription
-      // insert just failed — we have tenant + user→tenant link but no
-      // subscription row, which means the user can sign in but every
-      // billing/plan check returns null and behaviour is undefined
-      // (locked-out UI / phantom-trial bugs). Roll back both rows so
-      // they can retry cleanly; if either rollback fails we'd leave an
-      // orphan tenant or an orphan user→tenant link with no
-      // subscription, so throw and let the outer catch surface a
-      // generic error — preferable to a half-state account.
+      // insert just failed — we have tenant + user→tenant link + the
+      // team_members row from step 2.5, but no subscription row, which
+      // means the user can sign in but every billing/plan check
+      // returns null and behaviour is undefined (locked-out UI /
+      // phantom-trial bugs). Roll back all three rows so the user can
+      // retry cleanly; if any rollback fails we'd leave a half-state
+      // account, so throw and let the outer catch surface a generic
+      // error — preferable to a half-state account.
+      const { error: tmRollbackErr } = await adminClient
+        .from("team_members")
+        .delete()
+        .eq("tenant_id", tenant.id)
+        .eq("user_id", user.id);
+      if (tmRollbackErr) {
+        throw new Error(`onboarding: team_members rollback delete (after subscriptions insert failure) failed: ${tmRollbackErr.message}; original subscriptions error: ${subErr.message}`);
+      }
       const { error: userRollbackErr } = await adminClient
         .from("users")
         .delete()

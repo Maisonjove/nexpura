@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
-import { resolveReadLocationScope } from "@/lib/location-read-scope";
+import { resolveReadLocationScope, locationScopeFilter } from "@/lib/location-read-scope";
 import logger from "@/lib/logger";
 import { flushSentry } from "@/lib/sentry-flush";
 
@@ -100,11 +100,24 @@ export async function getSalesPage(
   // location outside their allow-list even if the client passes
   // locationIds=null (all-locations). Intersects the client filter with
   // the allow-list when both are present. See src/lib/location-read-scope.ts.
+  //
+  // C-02 hygiene (2026-05-05): when applying the SCOPE-derived
+  // restriction with NO user-explicit filter, use locationScopeFilter()
+  // so the .or() expression also matches `location_id IS NULL` rows.
+  // Pre-fix the .in() filter excluded NULL location_id sales — most
+  // legacy rows pre-dating the location_id column AND any sale
+  // created by a tenant without a default location selected. The
+  // user-explicit-filter branch keeps the strict .in() because the
+  // user explicitly chose a location subset and NULL-tagged rows
+  // weren't in that subset.
+  let scopeOrFilter: string | null = null;
   if (userId) {
     const scope = await resolveReadLocationScope(userId, tenantId);
     if (!scope.all) {
-      const allowSet = new Set(scope.allowedIds);
       if (locationIds && locationIds.length > 0) {
+        // User-explicit filter — intersect with scope, strict .in()
+        // (no OR-NULL).
+        const allowSet = new Set(scope.allowedIds);
         locationIds = locationIds.filter((id) => allowSet.has(id));
         if (locationIds.length === 0) {
           // intersection empty — restricted user cannot see any of the
@@ -112,7 +125,12 @@ export async function getSalesPage(
           return { sales: [], nextCursor: null, hasMore: false };
         }
       } else {
-        locationIds = scope.allowedIds.length > 0 ? scope.allowedIds : ["00000000-0000-0000-0000-000000000000"];
+        // Scope-as-default — fetch the OR-NULL filter expression.
+        // locationScopeFilter handles the empty-allowed (impossible
+        // UUID) case cleanly, so we don't need to special-case it here.
+        scopeOrFilter = await locationScopeFilter(userId, tenantId);
+        // Skip the .in() block below by leaving locationIds null.
+        locationIds = null;
       }
     }
   }
@@ -168,8 +186,13 @@ export async function getSalesPage(
     query = query.lt("created_at", cursor);
   }
 
-  // Apply location filter
-  if (locationIds && locationIds.length > 0) {
+  // Apply location filter — exactly one branch runs:
+  //   1. scopeOrFilter (.or() with location_id.in.(...) , location_id.is.null)
+  //   2. user-explicit .in() / .eq()
+  //   3. neither (all-access user, no filter)
+  if (scopeOrFilter !== null) {
+    query = query.or(scopeOrFilter);
+  } else if (locationIds && locationIds.length > 0) {
     if (locationIds.length === 1) {
       query = query.eq("location_id", locationIds[0]);
     } else {
