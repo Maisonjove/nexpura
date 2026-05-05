@@ -169,6 +169,24 @@ export default function QuoteDetailClient({ quote }: Props) {
     }
   }
 
+  // Section 4 #4: dry-run send to operator's inbox. Mirrors
+  // /invoices/[id] EmailInvoiceButton + bulk-email Send test.
+  async function handleEmailQuoteTest() {
+    setEmailSending(true);
+    try {
+      const result = await emailQuote(quote.id, { sendToOperator: true });
+      if (result.success && result.sentTo) {
+        toast.success(`Test sent to ${result.sentTo} — check your inbox`);
+      } else {
+        toast.error(`Test failed: ${result.error ?? "Unknown error"}`);
+      }
+    } catch {
+      toast.error("Failed to send test quote email.");
+    } finally {
+      setEmailSending(false);
+    }
+  }
+
   async function handleConvertToSale() {
     setLoading(true);
     setConfirmAction(null);
@@ -279,7 +297,7 @@ export default function QuoteDetailClient({ quote }: Props) {
           Back to Quotes
         </Link>
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => {
               if (!quote.customers?.email) {
                 toast.error("No customer email on file.");
@@ -292,6 +310,18 @@ export default function QuoteDetailClient({ quote }: Props) {
           >
             <Send size={18} />
             {emailSending ? "Sending…" : "Email Quote"}
+          </button>
+          {/* Section 4 #4: dry-run send to operator's inbox so they
+              can preview the email-as-customer-sees-it before
+              shipping the real thing. */}
+          <button
+            type="button"
+            onClick={handleEmailQuoteTest}
+            disabled={emailSending}
+            title="Send a test copy to your inbox to preview the email-as-customer-sees-it"
+            className="flex items-center gap-2 px-4 py-2 text-stone-500 hover:text-stone-900 transition-colors disabled:opacity-50"
+          >
+            {emailSending ? "Sending…" : "Send test to me"}
           </button>
           <a
             href={`/api/quote/${quote.id}/pdf`}

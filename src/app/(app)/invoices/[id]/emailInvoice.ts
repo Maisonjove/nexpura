@@ -36,9 +36,25 @@ function fmt(amount: number): string {
   }
 }
 
+/**
+ * Section 4 #4 (test-send/dry-run): when `options.sendToOperator`
+ * is true the rendered email + PDF attachment is sent to the
+ * authenticated user's inbox instead of the customer. Subject
+ * prefixed `[TEST]`. Used by /invoices/[id] "Send test to me"
+ * button for dry-running the customer-facing render.
+ *
+ * On test sends we skip the draft→unpaid status flip and the
+ * customer_communications audit insert — those are state-of-record
+ * changes that should only fire for real customer sends.
+ */
+export interface EmailInvoiceOptions {
+  sendToOperator?: boolean;
+}
+
 export async function emailInvoice(
-  invoiceId: string
-): Promise<{ success: boolean; error?: string }> {
+  invoiceId: string,
+  options: EmailInvoiceOptions = {},
+): Promise<{ success: boolean; sentTo?: string; error?: string }> {
   try {
     // 1. Auth + get tenant
     const supabase = await createClient();
@@ -106,8 +122,14 @@ export async function emailInvoice(
 
     // Check customer email
     const customerEmail = customerRaw?.email ?? null;
-    if (!customerEmail) {
-      return { success: false, error: "No customer email on file" };
+    const recipient = options.sendToOperator ? user.email ?? null : customerEmail;
+    if (!recipient) {
+      return {
+        success: false,
+        error: options.sendToOperator
+          ? "Your account has no email on file. Sign out and sign in again."
+          : "No customer email on file",
+      };
     }
 
     // 3. Compute amount_paid/amount_due
@@ -287,11 +309,12 @@ export async function emailInvoice(
     });
 
     // 7. Send via Resend with PDF attachment
+    const subjectBase = `Tax Invoice ${invoice.invoice_number} from ${businessName}`;
     const { error: sendError } = await resend.emails.send({
       from: emailConfig.from,
-      to: customerEmail,
+      to: recipient,
       replyTo: emailConfig.replyTo || (tenant?.email ? tenant.email : undefined),
-      subject: `Tax Invoice ${invoice.invoice_number} from ${businessName}`,
+      subject: options.sendToOperator ? `[TEST] ${subjectBase}` : subjectBase,
       html: htmlBody,
       attachments: [
         {
@@ -303,6 +326,15 @@ export async function emailInvoice(
 
     if (sendError) {
       return { success: false, error: sendError.message };
+    }
+
+    // Test-send branch: skip the state-of-record changes below
+    // (status flip, customer_communications audit). The email's
+    // already gone to the operator's inbox; re-running with
+    // sendToOperator=false later does the real send + state
+    // changes on first real-recipient hit.
+    if (options.sendToOperator) {
+      return { success: true, sentTo: recipient };
     }
 
     // 8. Update invoice status to 'sent' if was draft
