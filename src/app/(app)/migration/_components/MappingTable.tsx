@@ -19,11 +19,32 @@ interface MappingTableProps {
   onUpdate?: (updatedMappings: MappingRow[]) => void;
 }
 
-function ConfidenceBadge({ score }: { score: number }) {
+function ConfidenceBadge({
+  score,
+  unmapped = false,
+}: {
+  score: number;
+  unmapped?: boolean;
+}) {
   const pct = Math.round(score * 100);
-  const color = score >= 0.9 ? 'text-green-700 bg-green-50' : score >= 0.6 ? 'text-amber-700 bg-amber-50' : 'text-red-600 bg-red-50';
+  const color = score >= 0.9
+    ? 'text-green-700 bg-green-50'
+    : score >= 0.6
+      ? 'text-amber-700 bg-amber-50'
+      : 'text-red-600 bg-red-50';
+  // M-03: when the AI's best-guess didn't clear the auto-map threshold
+  // and the row is unmapped, the badge still renders so the user can
+  // see "the AI tried but wasn't confident — please pick manually."
+  // Pre-fix the cell was empty for unmapped rows, hiding the AI's
+  // effort.
+  const label = unmapped ? `${pct}% best guess` : `${pct}%`;
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${color}`}>{pct}%</span>
+    <span
+      className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${color}`}
+      title={unmapped ? 'AI confidence too low for auto-map — please review' : undefined}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -124,7 +145,16 @@ export function MappingTable({ mappings: initialMappings, entityType, onUpdate }
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {row.destination_field && <ConfidenceBadge score={row.confidence} />}
+                  {/* M-03: render confidence for ALL rows (including
+                      unmapped) so the user sees the AI's best-guess
+                      score even when the AI couldn't clear the auto-
+                      map threshold. */}
+                  {row.confidence > 0 && (
+                    <ConfidenceBadge
+                      score={row.confidence}
+                      unmapped={!row.destination_field}
+                    />
+                  )}
                 </td>
                 <td className="px-4 py-3 text-xs text-stone-500 max-w-xs">
                   {row.transformation && <span className="text-stone-600">Transform: {row.transformation}</span>}
