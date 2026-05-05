@@ -4,16 +4,52 @@ import { useState, useTransition, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
-function LoginPageContent() {
-  const router = useRouter();
+/**
+ * Reads the `?expired=true` query string and renders the session-expired
+ * banner.
+ *
+ * Isolated into its own component so the `useSearchParams()` hook — which
+ * forces a Suspense bailout under static prerender — only suspends THIS
+ * tiny child instead of the whole login form. With this isolation the
+ * server-rendered HTML for `/login` contains the form mark-up, so users
+ * (especially WebKit/Safari, which has slower hydration) see the inputs
+ * immediately on first paint instead of staring at the splash fallback
+ * until React hydrates the entire page. Closes QA-301.
+ */
+function ExpiredSessionBanner() {
   const searchParams = useSearchParams();
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("expired") === "true") {
+      setShow(true);
+    }
+  }, [searchParams]);
+
+  if (!show) return null;
+  return (
+    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+      <div className="flex items-start gap-3">
+        <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <p className="text-sm font-medium text-amber-800">Session expired</p>
+          <p className="text-sm text-amber-700 mt-1">Please log in again to continue where you left off.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [showExpiredMessage, setShowExpiredMessage] = useState(false);
 
   // NOTE: We intentionally do NOT `router.prefetch("/dashboard")` here.
   // On mount the user is unauthenticated, so middleware responds with a
@@ -22,13 +58,6 @@ function LoginPageContent() {
   // successful login would then replay the cached redirect and land the
   // user back on /login. The prefetch does more harm than good for the
   // normal case (unauth → login → auth → dashboard).
-
-  // Check if redirected due to session expiry
-  useEffect(() => {
-    if (searchParams.get("expired") === "true") {
-      setShowExpiredMessage(true);
-    }
-  }, [searchParams]);
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -143,20 +172,17 @@ function LoginPageContent() {
       </div>
 
       <div className="bg-m-white-soft rounded-[18px] border border-m-border-soft p-8 sm:p-10 w-full shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
-        {/* Session expired message */}
-        {showExpiredMessage && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-amber-800">Session expired</p>
-                <p className="text-sm text-amber-700 mt-1">Please log in again to continue where you left off.</p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/*
+          Session expired banner — wrapped in Suspense because it reads
+          `useSearchParams()`. The Suspense boundary is intentionally
+          scoped to JUST this banner so the rest of the form (inputs,
+          submit button, links) is part of the static prerender HTML.
+          See QA-301: previously the whole page suspended, leaving Safari
+          users on a splash fallback until hydration finished.
+        */}
+        <Suspense fallback={null}>
+          <ExpiredSessionBanner />
+        </Suspense>
 
         <form onSubmit={handlePasswordLogin} className="space-y-5" aria-label="Login form">
           <div>
@@ -281,24 +307,9 @@ function LoginPageContent() {
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <span className="font-serif text-2xl tracking-[0.32em] text-m-charcoal">NEXPURA</span>
-          <p className="text-[13px] text-m-text-faint mt-2">The modern platform for jewellers</p>
-        </div>
-        <div className="bg-m-white-soft rounded-[18px] border border-m-border-soft p-8 sm:p-10 w-full shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
-          <div className="h-8 w-48 bg-m-ivory rounded animate-pulse mb-8" />
-          <div className="space-y-5">
-            <div className="h-14 bg-m-ivory rounded-[14px] animate-pulse" />
-            <div className="h-14 bg-m-ivory rounded-[14px] animate-pulse" />
-            <div className="h-[54px] bg-m-charcoal rounded-full animate-pulse" />
-          </div>
-        </div>
-      </div>
-    }>
-      <LoginPageContent />
-    </Suspense>
-  );
+  // The form itself does NOT call useSearchParams (that hook is isolated to
+  // <ExpiredSessionBanner /> which has its own Suspense boundary above).
+  // As a result the form mark-up is part of the static SSR HTML — no
+  // page-level fallback splash, no hydration-blocked WebKit/Safari users.
+  return <LoginForm />;
 }
