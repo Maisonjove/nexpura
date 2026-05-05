@@ -58,13 +58,22 @@ export const POST = withSentryFlush(async (
   const supabase = createAdminClient();
 
   // Get website config + tenant
+  // Joey 2026-05-05 P2-C audit: also enforce tenants.deleted_at IS NULL by
+  // JOIN, matching the 3 sibling routes (appointment + repair-enquiry +
+  // repair-track) which were gated in PR #121's P2-B audit. Pre-fix this
+  // route accepted enquiry submissions for soft-deleted tenants and silently
+  // landed orphan rows in `communications`. Live evidence: P2-C synthetic-
+  // fixture probe surfaced a row from POST /api/shop/nexpura-dogfood/enquiry
+  // while tenants.deleted_at IS NOT NULL — same half-fix-pair pattern as
+  // tracked under cleanup #23.
   const { data: config } = await supabase
     .from("website_config")
-    .select("tenant_id, allow_enquiry, published")
+    .select("tenant_id, allow_enquiry, published, tenants!inner(deleted_at)")
     .eq("subdomain", subdomain)
     .maybeSingle();
+  const tenantsRel = (config as unknown as { tenants?: { deleted_at: string | null } | null })?.tenants;
 
-  if (!config?.published) {
+  if (!config?.published || tenantsRel?.deleted_at) {
     return NextResponse.json({ error: "Website not found" }, { status: 404 });
   }
 
