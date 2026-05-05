@@ -43,17 +43,14 @@ export default async function TransfersPage() {
     .eq("tenant_id", userData.tenant_id)
     .order("created_at", { ascending: false });
 
-  // Filter by user's accessible locations if restricted
-  if (allowedLocationIds !== null) {
-    if (allowedLocationIds.length === 0) {
-      // No location access
-      return (
-        <div className="max-w-2xl mx-auto py-16 text-center">
-          <h1 className="text-2xl font-semibold text-stone-900 mb-3">No Location Access</h1>
-          <p className="text-stone-500">You haven&apos;t been assigned to any locations yet. Ask your account owner to assign you to a location in Settings &rarr; Team, or visit Settings &rarr; Locations to set up your first location.</p>
-        </div>
-      );
-    }
+  // Joey 2026-05-05 (QA audit C-04): pre-fix this check was inverted —
+  // the page denied access if `allowedLocationIds !== null` (which means
+  // "user is restricted to a subset"). The canonical pattern across
+  // LocationContext.tsx:69 + TransfersClient.tsx:126 treats NULL as
+  // "all access" (owner/manager) and a populated array as "restricted
+  // subset". Fixed to match.
+  // Filter by user's accessible locations if restricted to a populated subset.
+  if (allowedLocationIds !== null && allowedLocationIds.length > 0) {
     // Show transfers where user's location is either source or destination.
     // W2-004: allowedLocationIds is a UUID array read from
     // team_members.allowed_location_ids (server-only, not user-controlled),
