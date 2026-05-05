@@ -37,6 +37,13 @@ interface SalesKpis {
 
 interface Props {
   initialSales: SaleWithLocation[];
+  /**
+   * Cursor pagination state for the full-list view (C-02).
+   * `hasMore` true → "View all" panel offers a Load-more button via
+   * `nextCursor`. The recent-sales panel itself still caps at 8 rows.
+   */
+  hasMore?: boolean;
+  nextCursor?: string | null;
   kpis: SalesKpis;
 }
 
@@ -52,8 +59,15 @@ function fmtCurrency(amount: number): string {
   }
 }
 
-export default function SalesHubClient({ initialSales, kpis }: Props) {
+export default function SalesHubClient({ initialSales, hasMore, nextCursor, kpis }: Props) {
   const hasSales = initialSales.length > 0;
+  // hasMore / nextCursor are passed through to the embedded list client
+  // so a future "Load more" affordance has the data it needs without
+  // a second round-trip on mount. Currently the recent-sales panel caps
+  // at 8 rows so these don't drive behaviour, but landing them here
+  // means SalesListClient can opt in without another server prop change.
+  void hasMore;
+  void nextCursor;
 
   return (
     <div className="space-y-7 max-w-[1400px]">

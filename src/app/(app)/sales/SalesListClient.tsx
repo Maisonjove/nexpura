@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { useLocation } from "@/contexts/LocationContext";
 import { getSales, SaleWithLocation } from "./sales-actions";
 import { MapPin } from "lucide-react";
@@ -95,7 +96,17 @@ export default function SalesListClient({ initialSales, hideHeader = false, limi
         const newSales = await getSales(locationIds);
         setSales(newSales);
       } catch (error) {
+        // C-02: server action now throws on query error instead of returning
+        // an empty array. Surface a user toast so the operator knows the
+        // table they're staring at is stale, not authoritative. Server-side
+        // logger.error has already captured to Sentry with tenant_id +
+        // payload_hash, so no client-side capture needed.
         console.error("Failed to fetch sales:", error);
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not refresh sales — please retry.",
+        );
       }
     });
   }, [viewMode, currentLocationId, getFilterLocationIds, isInitialLoad]);
