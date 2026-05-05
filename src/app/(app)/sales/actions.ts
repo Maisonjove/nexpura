@@ -38,24 +38,8 @@ async function getAuthContext() {
 // Actions
 // ────────────────────────────────────────────────────────────────
 
-export async function getSales() {
-  let ctx;
-  try {
-    ctx = await getAuthContext();
-  } catch {
-    return { data: null, error: "Not authenticated" };
-  }
-
-  const { supabase, tenantId } = ctx;
-
-  const { data, error } = await supabase
-    .from("sales")
-    .select("id, sale_number, customer_name, customer_email, status, payment_method, total, sale_date, created_at")
-    .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false });
-
-  return { data, error: error?.message ?? null };
-}
+// Canonical sales-list read lives in ./sales-actions.ts:getSales —
+// it has the location-scope handling. Don't restore a legacy twin here.
 
 export async function getSaleById(id: string) {
   let ctx;
