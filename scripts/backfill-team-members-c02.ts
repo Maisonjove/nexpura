@@ -140,11 +140,17 @@ async function findAffected(): Promise<AffectedRow[]> {
   return out;
 }
 
-type BackfillOutcome = "inserted" | "already_present" | "dry_run_planned";
+// 4-state decider + reporter live in scripts/backfill-c02-decider.ts
+// (pure module, no side-effects at load time). Tests import from
+// there directly without triggering this file's env-var check.
+import {
+  decideBackfillStatus,
+  formatBackfillMessage,
+  type BackfillResult,
+  type BackfillStatus,
+} from "./backfill-c02-decider";
 
-async function backfill(
-  row: AffectedRow,
-): Promise<{ outcome: BackfillOutcome; rowId: string | null; error?: string }> {
+async function backfill(row: AffectedRow): Promise<BackfillResult> {
   // Re-check existence at insert-time as a small race guard; a
   // concurrent invite-accept write is unlikely on prod for the
   // affected accounts but the cost is one round-trip.
@@ -154,23 +160,17 @@ async function backfill(
     .eq("tenant_id", row.tenant_id)
     .eq("user_id", row.user_id)
     .maybeSingle();
-  if (existing?.id) {
-    return { outcome: "already_present", rowId: existing.id };
-  }
+  const existingId = existing?.id ?? null;
+  const status = decideBackfillStatus(existingId, DRY_RUN);
 
-  if (DRY_RUN) {
-    // Existence check confirmed NO row — report this honestly as a
-    // planned insert rather than "already exists". Pre-fix the script
-    // returned `{inserted: false, rowId: null}` here and main()
-    // collapsed it into "row already exists (dry-run)" — the same
-    // status it printed for genuine duplicates. That hid the
-    // 2026-05-05 wave-4 backfill: dry-run reported 10 skipped /
-    // already-present, but in fact 10 needed inserts. Real WRITE-mode
-    // run inserted all 10 with provenance source
-    // `c02_backfill_2026_05_05`. Don't repeat the trick.
-    return { outcome: "dry_run_planned", rowId: null };
+  // Status decided up front — pick the side-effect path. The decider
+  // and the reporter never see the Supabase client; tests cover them
+  // directly. See CONTRIBUTING.md §16 for the dry-run vs write
+  // semantics this 4-state model is enforcing.
+  if (status === "exists" || status === "skip_exists" || status === "would_insert") {
+    return { status, existing: existingId, insertedId: null };
   }
-
+  // status === "inserted" — actually write the row.
   const { data: inserted, error } = await admin
     .from("team_members")
     .insert({
@@ -189,9 +189,14 @@ async function backfill(
     .single();
 
   if (error || !inserted?.id) {
-    return { outcome: "already_present", rowId: null, error: error?.message ?? "unknown" };
+    return {
+      status: "skip_exists",
+      existing: null,
+      insertedId: null,
+      error: error?.message ?? "unknown",
+    };
   }
-  return { outcome: "inserted", rowId: inserted.id };
+  return { status: "inserted", existing: null, insertedId: inserted.id };
 }
 
 async function main() {
@@ -210,34 +215,32 @@ async function main() {
     console.log(`  • ${r.user_email}  →  tenant_id=${r.tenant_id} (${r.tenant_slug ?? "<no-slug>"} / ${r.tenant_name ?? "<no-name>"})  role=${r.user_role}`);
   }
 
-  let inserted = 0;
-  let alreadyPresent = 0;
-  let plannedDry = 0;
+  const counts: Record<BackfillStatus, number> = {
+    inserted: 0,
+    would_insert: 0,
+    skip_exists: 0,
+    exists: 0,
+  };
   let failed = 0;
+
   for (const r of affected) {
     const result = await backfill(r);
     if (result.error) {
       failed += 1;
       console.error(`[backfill-c02] FAIL ${r.user_email} → ${r.tenant_id}: ${result.error}`);
-    } else if (result.outcome === "inserted") {
-      inserted += 1;
-      console.log(`[backfill-c02] inserted row=${result.rowId} for ${r.user_email} → ${r.tenant_id}`);
-    } else if (result.outcome === "dry_run_planned") {
-      plannedDry += 1;
-      console.log(`[backfill-c02] WOULD INSERT ${r.user_email} → ${r.tenant_id} (dry-run; existence check confirmed missing)`);
-    } else {
-      alreadyPresent += 1;
-      console.log(`[backfill-c02] skipped ${r.user_email} → ${r.tenant_id}: row already exists id=${result.rowId}`);
+      continue;
     }
+    counts[result.status] += 1;
+    console.log(formatBackfillMessage(result, r));
   }
 
   if (DRY_RUN) {
     console.log(
-      `\n[backfill-c02] DRY-RUN summary: would_insert=${plannedDry} already_present=${alreadyPresent} total=${affected.length}`,
+      `\n[backfill-c02] DRY-RUN summary: would_insert=${counts.would_insert} exists=${counts.exists} total=${affected.length}`,
     );
   } else {
     console.log(
-      `\n[backfill-c02] summary: inserted=${inserted} already_present=${alreadyPresent} failed=${failed} total=${affected.length}`,
+      `\n[backfill-c02] summary: inserted=${counts.inserted} skip_exists=${counts.skip_exists} failed=${failed} total=${affected.length}`,
     );
   }
   if (failed > 0) process.exit(2);
