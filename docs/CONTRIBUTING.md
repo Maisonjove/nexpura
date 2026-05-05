@@ -786,6 +786,11 @@ components:
 - [ ] Post-deploy: ran `BASE_URL=https://nexpura.com pnpm smoke:dashboard`
       against prod with the test creds. Asserts /nexpura/dashboard
       renders cleanly — see §11.
+- [ ] If a build script touches `public/*`: post-deploy `curl` the
+      modified file from prod and confirm the modification is live —
+      see §12. Vercel publishes from staged output, not source, so a
+      script that only runs after `next build` will appear successful
+      in build logs but ship the pre-modification file.
 
 ---
 
@@ -817,3 +822,31 @@ The matching SW-side fix lives in `public/sw.js` (cache-first
 restricted to content-hashed assets, RSC payloads always network-only)
 and `scripts/inject-sw-version.mjs` (postbuild rewrite of
 CACHE_VERSION per Vercel deploy).
+
+---
+
+## 12. Modifying `public/*` at build time on Vercel
+
+Next.js stages `public/*` files into `.vercel/output/static` DURING
+`next build`. Modifications to `public/*` files AFTER `next build`
+finishes do NOT propagate to the deployed bundle — Vercel publishes
+from the staged output, not from the post-build source.
+
+Implications:
+
+- A `postbuild` lifecycle hook fires AFTER staging — too late.
+- Chaining a script with `&& node ...` after `next build` — also too
+  late.
+- The script must run BEFORE `next build` (use `prebuild` lifecycle,
+  or chain BEFORE `next build` via `&&`).
+
+Example: PR-P2A-dashboard-fix shipped a `scripts/inject-sw-version.mjs`
+that rewrites `CACHE_VERSION` in `public/sw.js` to a per-deploy build
+ID. Initial implementation used `postbuild` — the script ran on
+Vercel (build logs confirmed) but the deployed `sw.js` still showed
+the pre-injection literal. Fix: switch to `prebuild` so the
+modification lands in source BEFORE `next build` snapshots `public/`.
+
+If you need to modify ANY `public/*` file at deploy time, use
+`prebuild`, never `postbuild`. Verification probe: after deploy,
+`curl` the modified file from prod and confirm the change is present.
