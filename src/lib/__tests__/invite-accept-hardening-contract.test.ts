@@ -86,22 +86,23 @@ describe("CRIT-7 /api/invite/accept — hardened", () => {
   });
 });
 
-describe("CRIT-7 invite creation — hash + expiry on both writer paths", () => {
+describe("CRIT-7 invite creation — hash + expiry on the canonical writer", () => {
   const teamSrc = readSrc("app/(app)/settings/team/actions.ts");
   const rolesSrc = readSrc("app/(app)/settings/roles/actions.ts");
 
-  it("settings/team/actions inviteTeamMember writes invite_token_hash + invite_expires_at", () => {
-    // Locate the INSERT block in inviteTeamMember.
-    const body = teamSrc.split("export async function inviteTeamMember")[1] ?? "";
-    expect(body).toMatch(/invite_token_hash:/);
-    expect(body).toMatch(/invite_expires_at:/);
-    expect(body).toMatch(/createHash\(\s*["']sha256["']\s*\)|hashInviteToken\(/);
+  it("settings/team re-exports the canonical (no local writer to assert against)", () => {
+    // H-04a (2026-05-05): the duplicate inviteTeamMember in team/actions
+    // was deleted. The canonical (rolesSrc below) is the single source.
+    expect(teamSrc).toMatch(
+      /export\s*\{\s*inviteTeamMember\s*\}\s*from\s*["']\.\.\/roles\/actions["']/,
+    );
   });
 
   it("settings/roles/actions inviteTeamMember writes invite_token_hash + invite_expires_at", () => {
     const body = rolesSrc.split("export async function inviteTeamMember")[1] ?? "";
     expect(body).toMatch(/invite_token_hash:/);
     expect(body).toMatch(/invite_expires_at:/);
+    expect(body).toMatch(/createHash\(\s*["']sha256["']\s*\)|hashInviteToken\(/);
   });
 
   it("settings/roles/actions resendInvite rotates hash + expiry alongside plaintext", () => {
@@ -113,8 +114,7 @@ describe("CRIT-7 invite creation — hash + expiry on both writer paths", () => 
   });
 
   it("expiry is ~7 days from now (matches the email copy)", () => {
-    // Both files declare INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
-    expect(teamSrc).toMatch(/INVITE_EXPIRY_MS\s*=\s*7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+    // Single canonical now — only roles declares INVITE_EXPIRY_MS.
     expect(rolesSrc).toMatch(/INVITE_EXPIRY_MS\s*=\s*7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
   });
 });

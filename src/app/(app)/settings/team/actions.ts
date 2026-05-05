@@ -3,20 +3,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import nodeCrypto from "node:crypto";
 import { logger } from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
-import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
 import { requireRole } from "@/lib/auth-context";
 
 import { flushSentry } from "@/lib/sentry-flush";
-// CRIT-7: invites expire after 7 days. Keep this constant in sync with
-// the copy in the invite emails and with /api/invite/accept's 410 path.
-const INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
-function hashInviteToken(token: string): string {
-  return nodeCrypto.createHash("sha256").update(token, "utf8").digest("hex");
-}
+// H-04a (consolidation, 2026-05-05): the duplicate inviteTeamMember
+// that lived here has been removed. The canonical action is in
+// `../roles/actions.ts:inviteTeamMember` — it sends the invite email
+// (this twin didn't, leaving recipients without the join link).
+// Re-export the canonical so existing TeamClient.tsx callers keep
+// working without touching the import line.
+export { inviteTeamMember } from "../roles/actions";
 
 async function getAuthContext() {
   const supabase = await createClient();
@@ -50,99 +49,11 @@ export async function getTeamMembers() {
   }
 }
 
-export async function inviteTeamMember(formData: FormData) {
-  try {
-    // W6-CRIT-04: adding teammates is a privilege-granting action.
-    // Owner-only, matching the parallel surface in /settings/roles/actions.
-    await requireRole("owner");
-    const { admin, userId, tenantId } = await getAuthContext();
-
-    const name = (formData.get("name") as string).trim();
-    const email = (formData.get("email") as string).trim().toLowerCase();
-    const role = (formData.get("role") as string) || "staff";
-
-    if (!name || !email) return { error: "Name and email are required" };
-
-    // -- SERVER-SIDE PLAN LIMIT ENFORCEMENT ----------------------------------
-    // canAddStaff() in plans.ts is also used client-side for UI feedback, but
-    // the authoritative check MUST happen here in the Server Action.
-    const { data: subscription } = await admin
-      .from("subscriptions")
-      .select("plan")
-      .eq("tenant_id", tenantId)
-      .single();
-    const userPlan = (subscription?.plan ?? "boutique") as PlanId;
-
-    const { count: memberCount } = await admin
-      .from("team_members")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId);
-
-    if (!canAddStaff(userPlan, memberCount ?? 0)) {
-      const limit = PLAN_FEATURES[userPlan]?.staffLimit;
-      const planLabel = userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
-      return {
-        error: `Your ${planLabel} plan allows up to ${limit} staff member${limit === 1 ? "" : "s"}. Upgrade your plan to add more team members.`,
-      };
-    }
-
-
-    // Check if email already exists in team
-    const { data: existing } = await admin
-      .from("team_members")
-      .select("id")
-      .eq("tenant_id", tenantId)
-      .eq("email", email)
-      .single();
-
-    if (existing) {
-      return { error: "A team member with this email already exists" };
-    }
-
-    // Generate invite token. CRIT-7: we now persist sha256(token) and an
-    // invite_expires_at (now + 7d). The plaintext column is still
-    // populated so we can email the link; /api/invite/accept prefers
-    // hash lookup and clears both on accept.
-    const inviteToken = crypto.randomUUID();
-    const inviteTokenHash = hashInviteToken(inviteToken);
-    const inviteExpiresAt = new Date(Date.now() + INVITE_EXPIRY_MS).toISOString();
-
-    const { data: member, error } = await admin.from("team_members").insert({
-      tenant_id: tenantId,
-      name,
-      email,
-      role,
-      invite_token: inviteToken,
-      invite_token_hash: inviteTokenHash,
-      invite_expires_at: inviteExpiresAt,
-      invite_accepted: false,
-      notify_new_repairs: false,
-      notify_new_bespoke: false,
-    }).select("id").single();
-
-    if (error) {
-      logger.error("inviteTeamMember insert failed", { error });
-      await flushSentry();
-      return { error: error.message };
-    }
-
-    await logAuditEvent({
-      tenantId,
-      userId,
-      action: "team_member_invite",
-      entityType: "team_member",
-      entityId: member?.id,
-      newData: { name, email, role },
-    });
-
-    revalidatePath("/settings/team");
-    return { success: true, inviteToken };
-  } catch (error) {
-    logger.error("inviteTeamMember failed", { error });
-    await flushSentry();
-    return { error: "Operation failed" };
-  }
-}
+// H-04a: deleted local inviteTeamMember(formData) here — re-exported
+// the canonical from ../roles/actions at the top of this file. The
+// callers in TeamClient.tsx pass a FormData; the canonical takes
+// typed args, so TeamClient now extracts the fields itself before
+// calling.
 
 export async function updateTeamMemberRole(memberId: string, role: string) {
   try {
