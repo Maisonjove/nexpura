@@ -781,6 +781,13 @@ components:
 - [ ] If you added a top-level `node:*` import to `src/lib/*`: ran the
       import-surface grep (§8) — no client/edge consumers, OR used
       the hook-registration pattern.
+- [ ] If you edited a `"use server"` file's exports (consolidation,
+      re-export, etc.): ran a local `pnpm build` once before pushing.
+      tsc + vitest cannot see the SWC server-action transform's
+      "module has no exports at all" failure. The
+      `local/no-server-action-reexport` rule catches the most common
+      shape (bare `export {x} from "y"`), but exotic shapes still need
+      the build verification. See §14.
 - [ ] If multiple parallel agents touched the codebase: ran the §9
       verification step before opening the PR.
 - [ ] Post-deploy: ran `BASE_URL=https://nexpura.com pnpm smoke:dashboard`
@@ -1016,8 +1023,14 @@ import { inviteTeamMember } from "../roles/actions";
 |---|---|---|
 | `pnpm tsc --noEmit` | ❌ no | Re-exports are valid TypeScript. tsc resolves the symbol type and stops there. |
 | `pnpm vitest run` | ❌ no | Contract tests grep source text; they don't run the SWC server-action transform. |
+| `pnpm exec eslint` (`local/no-server-action-reexport`) | ✅ yes | Custom rule fires at lint time on `export {x} from "y"` in any `"use server"` file. Locked at `error` severity. |
 | `pnpm build` (locally) | ✅ yes | The Next.js production build runs the SWC server-action transform. |
 | Vercel deploy | ✅ yes | Same as `pnpm build`. |
+
+The lint rule is the cheapest gate — you don't need a full local
+build to catch the common shape. But the build remains the ultimate
+verifier for exotic cases (e.g. dynamic re-exports the rule can't
+statically detect, or future SWC behaviors).
 
 Treat a clean tsc + green Vitest as necessary-but-not-sufficient for
 server-action edits. If you change anything in a `"use server"`

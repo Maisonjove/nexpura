@@ -10,6 +10,7 @@ import requireConnectionInAdminPages from "./eslint-rules/require-connection-in-
 import sentryFlushBeforeReturn from "./eslint-rules/sentry-flush-before-return.mjs";
 import noLoggerErrorInLoop from "./eslint-rules/no-logger-error-in-loop.mjs";
 import sentryFlushBeforeCallbackExit from "./eslint-rules/sentry-flush-before-callback-exit.mjs";
+import noServerActionReexport from "./eslint-rules/no-server-action-reexport.mjs";
 
 const localPlugin = {
   rules: {
@@ -18,6 +19,7 @@ const localPlugin = {
     "sentry-flush-before-return": sentryFlushBeforeReturn,
     "no-logger-error-in-loop": noLoggerErrorInLoop,
     "sentry-flush-before-callback-exit": sentryFlushBeforeCallbackExit,
+    "no-server-action-reexport": noServerActionReexport,
   },
 };
 
@@ -98,6 +100,16 @@ const eslintConfig = defineConfig([
       //    outer-function exits that follow without flush. See
       //    CONTRIBUTING.md item 5.
       "local/sentry-flush-before-callback-exit": "warn",
+      // 6. no-server-action-reexport: forbid `export {x} from "y"`
+      //    inside files with a "use server" directive. Caught on PR
+      //    #187 (commit fbd2d0c0 fix). The Next.js SWC transform
+      //    silently drops EVERY export from a "use server" file when
+      //    a bare re-export is present — local tsc + vitest don't see
+      //    it; only `pnpm build` / Vercel deploy does. Locked at
+      //    `error` from day one — there are zero legitimate uses in
+      //    the codebase right now, so any new violation is a guaranteed
+      //    deploy break. See CONTRIBUTING.md §14.
+      "local/no-server-action-reexport": "error",
     },
   },
   // Project-specific rule overrides
