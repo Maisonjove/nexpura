@@ -42,6 +42,7 @@ export default async function ReviewBillingPage() {
         subdomain=""
         email="review@nexpura.com"
         currency="AUD"
+        tenantTimezone={null}
       />
     </div>
   );

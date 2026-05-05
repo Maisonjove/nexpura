@@ -17,6 +17,12 @@ interface BillingClientProps {
   /** Tenant's billing currency — controls which price the plan card
    *  displays and which price ID is used at checkout. */
   currency: CurrencyCode;
+  /** Tenant's IANA timezone (e.g. "Australia/Sydney"). Pins the
+   *  trial-end + next-billing date display so a tenant in a different
+   *  TZ from the staff member viewing the page sees the same date as
+   *  Stripe's billing cycle. Null falls back to the user's browser TZ
+   *  (the pre-fix behaviour). L-05 audit, 2026-05-05. */
+  tenantTimezone: string | null;
 }
 
 // Map the marketing PLANS (full feature copy + multi-currency) to the
@@ -73,9 +79,27 @@ export default function BillingClient({
   subdomain,
   email,
   currency,
+  tenantTimezone,
 }: BillingClientProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
+
+  // L-05: pre-fix used toLocaleDateString("en-AU") with no timeZone
+  // option, defaulting to the user's browser TZ. For tenants whose
+  // business operates in a different TZ from the staff member viewing
+  // the page, that meant the displayed date could disagree with what
+  // Stripe actually charges (Stripe operates on the trial_ends_at
+  // timestamp). At the day boundary, the user could see "Trial ends
+  // 11 Aug" while the tenant TZ said it's actually 12 Aug — confusing,
+  // and a recurring source of "why didn't it charge yet?" tickets.
+  const dateFmt: Intl.DateTimeFormatOptions = {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    ...(tenantTimezone ? { timeZone: tenantTimezone } : {}),
+  };
+  const formatDate = (iso: string | null): string =>
+    iso ? new Date(iso).toLocaleDateString("en-AU", dateFmt) : "—";
 
   async function handleUpgrade(planId: string) {
     setLoading(planId);
@@ -148,9 +172,9 @@ export default function BillingClient({
               </p>
               <p className="text-base font-medium text-stone-900">
                 {isTrial && trialEndsAt
-                  ? new Date(trialEndsAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+                  ? formatDate(trialEndsAt)
                   : isActive && currentPeriodEnd
-                  ? new Date(currentPeriodEnd).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+                  ? formatDate(currentPeriodEnd)
                   : "—"}
               </p>
             </div>

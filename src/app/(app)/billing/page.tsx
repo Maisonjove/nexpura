@@ -48,7 +48,7 @@ export default async function BillingPage() {
       },
       300
     ),
-    admin.from("tenants").select("currency").eq("id", tenantId).single(),
+    admin.from("tenants").select("currency, timezone").eq("id", tenantId).single(),
   ]);
 
   const subscription = subscriptionResult.data;
@@ -68,6 +68,7 @@ export default async function BillingPage() {
       subdomain={websiteData?.subdomain ?? ctx.tenantId ?? ""}
       email={email ?? ""}
       currency={tenantCurrency}
+      tenantTimezone={tenantRow.data?.timezone ?? null}
     />
   );
 }
