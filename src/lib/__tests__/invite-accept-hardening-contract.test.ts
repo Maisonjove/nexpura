@@ -90,10 +90,15 @@ describe("CRIT-7 invite creation — hash + expiry on the canonical writer", () 
   const teamSrc = readSrc("app/(app)/settings/team/actions.ts");
   const rolesSrc = readSrc("app/(app)/settings/roles/actions.ts");
 
-  it("settings/team re-exports the canonical (no local writer to assert against)", () => {
+  it("settings/team holds NO inviteTeamMember (canonical-only on roles)", () => {
     // H-04a (2026-05-05): the duplicate inviteTeamMember in team/actions
     // was deleted. The canonical (rolesSrc below) is the single source.
-    expect(teamSrc).toMatch(
+    // No re-export either — Next.js's server-action bundler treats a
+    // bare `export {x} from "y"` inside a "use server" module as
+    // "module has no exports at all" and the rest of the file's local
+    // exports vanish too. Callers import direct from ../roles/actions.
+    expect(teamSrc).not.toMatch(/export\s+async\s+function\s+inviteTeamMember\s*\(/);
+    expect(teamSrc).not.toMatch(
       /export\s*\{\s*inviteTeamMember\s*\}\s*from\s*["']\.\.\/roles\/actions["']/,
     );
   });

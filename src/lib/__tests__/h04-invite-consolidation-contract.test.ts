@@ -33,12 +33,25 @@ const teamClient = fs.readFileSync(
 );
 
 describe("H-04a — exactly one inviteTeamMember definition across settings/", () => {
-  it("settings/team/actions.ts re-exports the canonical (no local definition)", () => {
-    expect(teamActions).toMatch(
-      /export\s*\{\s*inviteTeamMember\s*\}\s*from\s*["']\.\.\/roles\/actions["']/,
-    );
+  it("settings/team/actions.ts holds NO inviteTeamMember (canonical lives on roles)", () => {
     // Local `export async function inviteTeamMember` is gone.
     expect(teamActions).not.toMatch(/export\s+async\s+function\s+inviteTeamMember\s*\(/);
+    // No re-export either — `export {x} from "y"` inside a "use server"
+    // module breaks Next.js's server-action bundler (caught on the PR
+    // #187 Vercel deploy: "The module has no exports at all"). Callers
+    // import inviteTeamMember directly from ../roles/actions.
+    expect(teamActions).not.toMatch(
+      /export\s*\{\s*inviteTeamMember\s*\}\s*from\s*["']\.\.\/roles\/actions["']/,
+    );
+  });
+
+  it("TeamClient.tsx imports inviteTeamMember directly from ../roles/actions", () => {
+    // Allow co-imports (e.g. resendInvite from NEW-03) alongside;
+    // the assertion is "this exact import path supplies inviteTeamMember",
+    // not "inviteTeamMember is the only thing imported".
+    expect(teamClient).toMatch(
+      /import\s*\{[^}]*\binviteTeamMember\b[^}]*\}\s*from\s*["']\.\.\/roles\/actions["']/,
+    );
   });
 
   it("settings/roles/actions.ts holds the canonical with email send", () => {

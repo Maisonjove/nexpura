@@ -13,9 +13,16 @@ import { flushSentry } from "@/lib/sentry-flush";
 // that lived here has been removed. The canonical action is in
 // `../roles/actions.ts:inviteTeamMember` — it sends the invite email
 // (this twin didn't, leaving recipients without the join link).
-// Re-export the canonical so existing TeamClient.tsx callers keep
-// working without touching the import line.
-export { inviteTeamMember } from "../roles/actions";
+//
+// We do NOT re-export the canonical from this file. Re-exports from a
+// "use server" module break Next.js's server-action bundler — the SWC
+// plugin sees a bare `export {x} from "y"` in a "use server" file and
+// emits a module with NO exports at all (every other local export
+// disappears too). Caught it on the PR #187 Vercel deploy:
+//   "The export updateTeamMemberRole was not found in module
+//    .../settings/team/actions.ts. The module has no exports at all."
+// TeamClient.tsx now imports inviteTeamMember directly from
+// ../roles/actions instead.
 
 async function getAuthContext() {
   const supabase = await createClient();
