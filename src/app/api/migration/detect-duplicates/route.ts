@@ -83,8 +83,11 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'heavy');
+  // Half-fix-pair audit finding #5: mirror sibling /api/migration/upload
+  // by keying rate-limit on user.id (auth check above guarantees user.id
+  // is available). IP keying penalises shared-NAT users and is bypassable
+  // by rotating x-forwarded-for.
+  const { success } = await checkRateLimit(`migration-detect-duplicates:${user.id}`, 'heavy');
   if (!success) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }

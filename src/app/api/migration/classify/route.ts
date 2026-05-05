@@ -30,8 +30,13 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
-  const { success } = await checkRateLimit(ip, 'heavy');
+  // Half-fix-pair audit finding #5: sibling /api/migration/upload keys
+  // its rate-limit by user.id (with explicit NAT/CGNAT comment) — IP
+  // keying lets a single mobile-network NAT pool DoS classify for all
+  // users behind it, AND lets one bad actor rotate x-forwarded-for to
+  // bypass. Mirror the upload sibling: key by user.id (auth check above
+  // guarantees user.id is available here).
+  const { success } = await checkRateLimit(`migration-classify:${user.id}`, 'heavy');
   if (!success) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
