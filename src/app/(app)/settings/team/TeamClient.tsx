@@ -4,14 +4,17 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  inviteTeamMember,
   removeTeamMember,
   updateTeamMemberRole,
   createTask,
   updateTaskStatus,
   updateTeamMemberNotifications,
 } from "./actions";
-import { resendInvite } from "../roles/actions";
+// H-04a: invite-creation lives on /settings/roles/actions (the canonical
+// that sends the email + enforces the plan-limit). Imported here directly
+// because re-export from "use server" files breaks the Next.js bundler.
+// resendInvite (NEW-03 stale-invite UX) lives there too.
+import { inviteTeamMember, resendInvite } from "../roles/actions";
 import TeamMemberLocationModal from "@/components/TeamMemberLocationModal";
 import { MapPin, Bell, BellOff } from "lucide-react";
 
@@ -171,12 +174,21 @@ export default function TeamClient({
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault();
-    const fd = new FormData();
-    fd.append("name", inviteName);
-    fd.append("email", inviteEmail);
-    fd.append("role", inviteRole);
+    // H-04a (consolidation): the canonical inviteTeamMember (re-
+    // exported from ../roles/actions) takes typed args + sends the
+    // invite email. The legacy formData signature was deleted.
+    // /settings/team's invite modal still has only name + email +
+    // role, so we pass null for allowedLocationIds (= all locations)
+    // and undefined for phoneNumber. Owners who need per-staff
+    // location restrictions or WhatsApp numbers should invite from
+    // /settings/roles where the form exposes those fields.
     startTransition(async () => {
-      const result = await inviteTeamMember(fd);
+      const result = await inviteTeamMember(
+        inviteName,
+        inviteEmail,
+        inviteRole,
+        null,
+      );
       if (result?.error) showMsg(`Error: ${result.error}`);
       else {
         showMsg("Team member invited!");

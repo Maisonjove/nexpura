@@ -10,6 +10,7 @@ import logger from "@/lib/logger";
 import { logAuditEvent } from "@/lib/audit";
 import { requireAuth, requireRole } from "@/lib/auth-context";
 import { DEFAULT_PERMISSIONS, type PermissionSet, type NotificationPreferences } from "./_constants";
+import { PLAN_FEATURES, canAddStaff, type PlanId } from "@/lib/plans";
 
 import { flushSentry } from "@/lib/sentry-flush";
 // CRIT-7: invites expire after 7 days. Matches the 7-day copy in the
@@ -145,6 +146,16 @@ export async function updateMemberDefaultLocation(
   return { success: true };
 }
 
+/**
+ * H-04a (consolidation, 2026-05-05): this is the ONE inviteTeamMember
+ * action. The duplicate in `settings/team/actions.ts` was deleted —
+ * it didn't send an invite email so a junior staff member who landed
+ * on the team modal got a recipient that never received the link.
+ *
+ * This version: sends email, applies plan-limit enforcement (folded
+ * in from the deleted twin), and is the single import target for both
+ * /settings/roles + /settings/team UI surfaces.
+ */
 export async function inviteTeamMember(
   name: string,
   email: string,
@@ -162,7 +173,31 @@ export async function inviteTeamMember(
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
 
   const admin = createAdminClient();
-  
+
+  // H-04a: plan-limit enforcement. Folded in from the (now-deleted)
+  // settings/team/actions.ts:inviteTeamMember twin. canAddStaff() is
+  // also used client-side for UI feedback, but the authoritative check
+  // MUST happen here in the Server Action.
+  const { data: subscription } = await admin
+    .from("subscriptions")
+    .select("plan")
+    .eq("tenant_id", ctx.tenantId)
+    .single();
+  const userPlan = (subscription?.plan ?? "boutique") as PlanId;
+
+  const { count: memberCount } = await admin
+    .from("team_members")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", ctx.tenantId);
+
+  if (!canAddStaff(userPlan, memberCount ?? 0)) {
+    const limit = PLAN_FEATURES[userPlan]?.staffLimit;
+    const planLabel = userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
+    return {
+      error: `Your ${planLabel} plan allows up to ${limit} staff member${limit === 1 ? "" : "s"}. Upgrade your plan to add more team members.`,
+    };
+  }
+
   // Check if member already exists
   const { data: existing } = await admin
     .from("team_members")
@@ -170,7 +205,7 @@ export async function inviteTeamMember(
     .eq("tenant_id", ctx.tenantId)
     .eq("email", email.toLowerCase())
     .single();
-  
+
   if (existing) return { error: "A team member with this email already exists" };
 
   // Get tenant info for the email
