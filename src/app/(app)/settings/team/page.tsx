@@ -28,7 +28,7 @@ export default async function TeamPage() {
   const [{ data: members }, { data: tasks }, { data: locations }] = await Promise.all([
     admin
       .from("team_members")
-      .select("id, name, email, role, department, last_login_at, invite_accepted, created_at, allowed_location_ids, notify_new_repairs, notify_new_bespoke")
+      .select("id, name, email, role, department, last_login_at, invite_accepted, invite_expires_at, created_at, allowed_location_ids, notify_new_repairs, notify_new_bespoke")
       .eq("tenant_id", ctx.tenantId)
       .order("created_at", { ascending: true }),
     supabase

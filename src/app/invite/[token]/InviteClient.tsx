@@ -17,7 +17,12 @@ interface Props {
   };
 }
 
-type UIState = "form" | "waiting" | "accepting" | "error";
+type UIState = "form" | "waiting" | "accepting" | "error" | "email-mismatch";
+
+interface EmailMismatch {
+  sessionEmail: string;
+  inviteEmail: string;
+}
 
 export default function InviteClient({ token, invite }: Props) {
   const router = useRouter();
@@ -29,6 +34,8 @@ export default function InviteClient({ token, invite }: Props) {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
+  const [emailMismatch, setEmailMismatch] = useState<EmailMismatch | null>(null);
+  const [signOutLoading, setSignOutLoading] = useState(false);
 
   // Accept the invite and go to dashboard
   async function acceptInviteAndRedirect(userId: string) {
@@ -41,6 +48,22 @@ export default function InviteClient({ token, invite }: Props) {
       });
       const result = await response.json();
       if (!response.ok) {
+        // NEW-02: when the server reports the session user's email
+        // doesn't match the invite, render a dedicated logout-and-retry
+        // path instead of a dead-end error.
+        if (
+          response.status === 403 &&
+          result?.code === "EMAIL_MISMATCH" &&
+          typeof result?.sessionEmail === "string" &&
+          typeof result?.inviteEmail === "string"
+        ) {
+          setEmailMismatch({
+            sessionEmail: result.sessionEmail,
+            inviteEmail: result.inviteEmail,
+          });
+          setUiState("email-mismatch");
+          return;
+        }
         setError(result.error || "Failed to accept invitation. Please try again.");
         setUiState("error");
         return;
@@ -49,6 +72,21 @@ export default function InviteClient({ token, invite }: Props) {
     } catch {
       setError("An unexpected error occurred. Please try again.");
       setUiState("error");
+    }
+  }
+
+  // NEW-02: sign the wrong account out and reload the invite page so the
+  // recipient can sign in with the right one. The token is preserved in
+  // the URL.
+  async function handleSignOutAndRetry() {
+    setSignOutLoading(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } finally {
+      // Reload to /invite/[token] (current URL); the page will see no
+      // session and show the signup/login surface again.
+      window.location.href = `/invite/${token}`;
     }
   }
 
@@ -205,6 +243,45 @@ export default function InviteClient({ token, invite }: Props) {
     );
   }
 
+  // ── Email mismatch (NEW-02) ────────────────────────────────────
+  if (uiState === "email-mismatch" && emailMismatch) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-10 max-w-md w-full text-center">
+          <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-stone-900 mb-3">Wrong account</h2>
+          <p className="text-stone-500 text-sm mb-2">
+            This invitation is for{" "}
+            <span className="font-semibold text-stone-900">{emailMismatch.inviteEmail}</span>,
+            but you&apos;re signed in as{" "}
+            <span className="font-semibold text-stone-900">{emailMismatch.sessionEmail}</span>.
+          </p>
+          <p className="text-stone-400 text-xs mb-8">
+            Sign out and sign back in with the invited account to continue.
+          </p>
+          <button
+            data-testid="invite-signout-retry"
+            onClick={handleSignOutAndRetry}
+            disabled={signOutLoading}
+            className="w-full bg-gradient-to-b from-[#3a3a3a] to-[#1a1a1a] hover:from-[#4a4a4a] hover:to-[#2a2a2a] text-white font-medium py-3 rounded-full transition-all text-sm shadow-[0_2px_4px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] disabled:opacity-60"
+          >
+            {signOutLoading ? "Signing out…" : "Sign out and try again"}
+          </button>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="mt-3 text-sm text-stone-500 hover:text-stone-900 font-medium"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Error state ────────────────────────────────────────────────
   if (uiState === "error") {
     return (
@@ -217,12 +294,20 @@ export default function InviteClient({ token, invite }: Props) {
           </div>
           <h2 className="text-xl font-semibold text-stone-900 mb-3">Something went wrong</h2>
           <p className="text-stone-500 text-sm mb-6">{error}</p>
-          <button
-            onClick={() => { setUiState("form"); setError(null); }}
-            className="text-sm text-amber-600 hover:text-amber-700 font-medium"
-          >
-            Try again
-          </button>
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={() => { setUiState("form"); setError(null); }}
+              className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="text-sm text-stone-500 hover:text-stone-900 font-medium"
+            >
+              Back to dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
