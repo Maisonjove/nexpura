@@ -32,12 +32,22 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
   const admin = createAdminClient();
 
   try {
-    // Get all active scheduled reports that are due
+    // Get all active scheduled reports that are due.
+    //
+    // half-fix-pair: cron-iterates-tenants family (cleanup #23 + #29-32,
+    // see docs/CONTRIBUTING.md §13). Sibling lifecycle crons
+    // (grace-period-checker / trial-end-checker / process-tenant-deletions)
+    // already gate on `tenants.deleted_at IS NULL`; without the same
+    // gate here, a wound-down tenant with an active scheduled_reports
+    // row would keep emailing CSV data dumps to saved recipients
+    // post-deletion. Switch the join to `tenants!inner(...)` and add
+    // the deleted_at filter — same shape as the other crons.
     const now = new Date();
     const { data: dueReports, error } = await admin
       .from("scheduled_reports")
-      .select("*, tenants(name, business_name, email, currency, timezone)")
+      .select("*, tenants!inner(name, business_name, email, currency, timezone, deleted_at)")
       .eq("is_active", true)
+      .is("tenants.deleted_at", null)
       .lte("next_run_at", now.toISOString())
       .limit(50);
 
@@ -75,7 +85,7 @@ export const GET = withSentryFlush(async (req: NextRequest) => {
         let sentCount = 0;
         let failedCount = 0;
 
-        const tenant = report.tenants as { name: string; business_name: string; email: string } | null;
+        const tenant = report.tenants as { name: string; business_name: string; email: string; deleted_at: string | null } | null;
         const businessName = tenant?.business_name || tenant?.name || "Nexpura";
 
         for (const email of recipients) {

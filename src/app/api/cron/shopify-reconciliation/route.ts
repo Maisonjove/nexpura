@@ -62,10 +62,21 @@ export const GET = withSentryFlush(async (request: NextRequest) => {
     // we drain the oldest orphans first (longest-suffering customer
     // gets healed first). The partial index
     // `sales_import_status_incomplete_idx` makes this query cheap.
+    //
+    // half-fix-pair: cron-iterates-tenants family (cleanup #23 + #29-32,
+    // see docs/CONTRIBUTING.md §13). Sibling lifecycle crons
+    // (grace-period-checker / trial-end-checker / process-tenant-deletions)
+    // already gate on `tenants.deleted_at IS NULL`; without the same
+    // gate here, this cron would keep hitting Shopify's API on behalf
+    // of soft-deleted tenants — burning the (now-revoked-from-the-
+    // customer's-side) integration creds and writing back to a
+    // wound-down tenant's sales table. Inner-join + deleted_at filter
+    // mirrors the storefront /api/shop/* fixes.
     const { data: orphans, error: orphansErr } = await admin
       .from("sales")
-      .select("id, tenant_id, external_reference")
+      .select("id, tenant_id, external_reference, tenants!inner(deleted_at)")
       .eq("import_status", "incomplete")
+      .is("tenants.deleted_at", null)
       .like("external_reference", "shopify_%")
       .order("created_at", { ascending: true })
       .limit(RECONCILIATION_BATCH_SIZE);
