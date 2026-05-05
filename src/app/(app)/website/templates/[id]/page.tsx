@@ -12,6 +12,7 @@ import {
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ embed?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,8 +25,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TemplatePreviewPage({ params }: Props) {
+export default async function TemplatePreviewPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  // M-09: when embedded inside the gallery iframe modal, hide the
+  // admin chrome and metadata so the user sees a faithful render
+  // of the template alone. The gallery's modal provides its own
+  // close + "Use this template" controls.
+  const isEmbed = sp?.embed === "1";
   const template = getTemplateById(id);
   if (!template) notFound();
 
@@ -44,27 +51,30 @@ export default async function TemplatePreviewPage({ params }: Props) {
     <>
       <TemplateFontLink theme={theme} />
 
-      {/* Top admin bar (only visible inside the app shell) */}
-      <div className="bg-stone-900 text-white text-xs">
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
-          <Link
-            href="/website/templates"
-            className="text-white/80 hover:text-white inline-flex items-center gap-1"
-          >
-            ← All templates
-          </Link>
-          <div className="flex items-center gap-2 text-[11px] text-white/70 truncate">
-            <span className="hidden sm:inline">Previewing</span>
-            <strong className="text-white truncate">{template.name}</strong>
+      {/* Top admin bar — hidden in embed mode (iframe inside the gallery
+          modal provides its own X/Use-this controls). */}
+      {!isEmbed && (
+        <div className="bg-stone-900 text-white text-xs">
+          <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
+            <Link
+              href="/website/templates"
+              className="text-white/80 hover:text-white inline-flex items-center gap-1"
+            >
+              ← All templates
+            </Link>
+            <div className="flex items-center gap-2 text-[11px] text-white/70 truncate">
+              <span className="hidden sm:inline">Previewing</span>
+              <strong className="text-white truncate">{template.name}</strong>
+            </div>
+            <Link
+              href={`/website/templates#${template.id}`}
+              className="bg-white text-stone-900 hover:bg-stone-100 transition-colors px-3 py-1.5 rounded-md font-medium"
+            >
+              Use this
+            </Link>
           </div>
-          <Link
-            href={`/website/templates#${template.id}`}
-            className="bg-white text-stone-900 hover:bg-stone-100 transition-colors px-3 py-1.5 rounded-md font-medium"
-          >
-            Use this
-          </Link>
         </div>
-      </div>
+      )}
 
       <div
         style={{
