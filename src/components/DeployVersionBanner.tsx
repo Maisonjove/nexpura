@@ -11,20 +11,25 @@
  * React error #419 ("unexpected response from server") on the next
  * link click — no recovery, blank screen, manual refresh needed.
  *
- * Next.js 16's built-in deploy-ID guard works on Vercel by sending an
- * `x-deployment-id` header on RSC fetches and rejecting at the edge if
- * it doesn't match the current deploy. That guard is bypassed in our
- * stack because the Service Worker (public/sw.js) proxies RSC requests
- * through the Cache API: a cached RSC response from Deploy A can be
- * handed to a Deploy A client by the SW long after Deploy B is live,
- * with neither layer noticing skew.
+ * Next.js 16 + Vercel emit `x-nextjs-deployment-id: dpl_xxx` on RSC
+ * fetches (Vercel auto-populates this; no `deploymentId` config in
+ * next.config required — and the explicit-config path is blocked
+ * because Vercel's NEXT_DEPLOYMENT_ID env var would conflict, see the
+ * 2026-05-05 verification fix). Vercel's edge can also reject RSC
+ * fetches at the boundary on mismatch, but in our stack the Service
+ * Worker (public/sw.js) proxies RSC requests through the Cache API:
+ * a cached RSC response from Deploy A can be handed to a Deploy A
+ * client by the SW long after Deploy B is live, with neither layer
+ * noticing skew.
  *
  * MECHANISM
  * ---------
  * On mount this component installs a global `fetch` interceptor that
- * inspects the `x-deployment-id` response header on every request. If
- * the server's deploy ID differs from the client's compiled-in
- * `NEXT_PUBLIC_BUILD_ID`, we know skew has occurred:
+ * inspects the `x-nextjs-deployment-id` response header on every
+ * request. If the server's deploy ID differs from the client's
+ * compiled-in `NEXT_PUBLIC_BUILD_ID` (also Vercel's `dpl_xxx`, inlined
+ * at build time via next.config's env block), we know skew has
+ * occurred:
  *   1. Emit a Sentry breadcrumb + capture an `info` event with both
  *      build IDs and the current route (telemetry, not error).
  *   2. Show a small toast banner ("A new version is available.
@@ -158,7 +163,7 @@ export function installDeployMismatchInterceptor(
   const wrapped: typeof window.fetch = async (input, init) => {
     const response = await originalFetch.call(window, input, init);
     try {
-      const serverBuildId = response.headers.get('x-deployment-id');
+      const serverBuildId = response.headers.get('x-nextjs-deployment-id');
       if (
         serverBuildId &&
         serverBuildId !== opts.clientBuildId &&

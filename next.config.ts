@@ -62,30 +62,42 @@ const nextConfig: NextConfig = {
     if (sha && sha.length > 0) return `build-${sha.slice(0, 12)}`;
     return null;
   },
-  // C-06 verification finding (2026-05-05): the original PR set
-  // `generateBuildId` and assumed Next would emit
-  // `x-deployment-id` on responses. That was wrong — Next only emits
-  // that header when the separate `deploymentId` config is set.
-  // Without `deploymentId`, the only deploy-identifying header is
-  // Vercel's `x-nextjs-deployment-id: dpl_xxx` (a Vercel ID, not the
-  // SHA-based token the client compares against). Result: the
-  // DeployVersionBanner's fetch interceptor never fired in production.
-  // Fix: set `deploymentId` to the same `build-<sha12>` token. Now Next
-  // emits `x-deployment-id: build-<sha12>` matching the client's
-  // inlined `NEXT_PUBLIC_BUILD_ID`, so the comparison resolves.
-  // Falls back to `undefined` (Next's no-op) when SHA isn't available.
-  ...(process.env.VERCEL_GIT_COMMIT_SHA
-    ? { deploymentId: `build-${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12)}` }
-    : {}),
+  // C-06 verification finding (2026-05-05). Two-pass fix:
+  //
+  // First pass added `deploymentId: build-<sha12>` here so Next would
+  // emit `x-deployment-id`. Vercel rejected the build:
+  //   "The NEXT_DEPLOYMENT_ID environment variable value 'dpl_xxx' does
+  //    not match the provided deploymentId 'build-<sha12>' in the config"
+  // — Vercel auto-injects NEXT_DEPLOYMENT_ID and Next refuses any
+  // explicit `deploymentId` that conflicts with it. We can't anchor
+  // skew detection on a SHA-derived token from inside this file alone.
+  //
+  // Second pass (this one): align the client-side anchor and the
+  // header the client reads with the surface Vercel actually provides:
+  //   - server emits `x-nextjs-deployment-id: dpl_xxx` natively
+  //     (no `deploymentId` config needed; Vercel does it)
+  //   - client reads `NEXT_PUBLIC_BUILD_ID = NEXT_DEPLOYMENT_ID` at
+  //     build time (Vercel auto-injects this; we just expose it)
+  //   - DeployVersionBanner reads `x-nextjs-deployment-id` from the
+  //     response (matches what the server emits; same `dpl_xxx` value)
+  //
+  // `generateBuildId` is kept — it owns the build artifact's SHA-based
+  // identity for the SW cache key (scripts/inject-sw-version.mjs).
+  // The skew-detection layer is intentionally a different anchor:
+  // SW cache eviction is per-build-artifact; skew detection is per-
+  // Vercel-deploy. They are different invariants.
+  //
+  // Tradeoff acknowledged: re-deploying the same Git SHA on Vercel
+  // produces a fresh `dpl_xxx`, so the banner will fire on the
+  // already-loaded client. That's acceptable — a soft reload after a
+  // promotional redeploy is a benign UX cost, and the reload-blocker
+  // registry preserves in-progress state.
   env: {
-    // Expose the build ID to client code at build time. Reading
+    // Expose Vercel's deploy ID to client code at build time. Reading
     // `process.env.NEXT_PUBLIC_BUILD_ID` from a client component returns
     // the inlined string token. Falls back to empty string (banner stays
-    // dormant) when the SHA isn't available — local dev, preview without
-    // git context, etc.
-    NEXT_PUBLIC_BUILD_ID: process.env.VERCEL_GIT_COMMIT_SHA
-      ? `build-${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12)}`
-      : "",
+    // dormant) when there's no Vercel deploy context — local dev, etc.
+    NEXT_PUBLIC_BUILD_ID: process.env.NEXT_DEPLOYMENT_ID ?? "",
   },
   experimental: {
     clientTraceMetadata: ["baggage", "sentry-trace"],

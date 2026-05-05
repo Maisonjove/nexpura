@@ -30,29 +30,29 @@ function readRepo(rel: string): string {
 describe("C-06 next.config.ts — deployment-id surface", () => {
   const cfg = readRepo("next.config.ts");
 
-  it("sets `deploymentId` (not just `generateBuildId`) so x-deployment-id is emitted", () => {
-    // The bug we fixed: pre-fix the config only had `generateBuildId`,
-    // and Next.js does NOT emit `x-deployment-id` on responses unless
-    // `deploymentId` is also set.
-    expect(cfg).toMatch(/deploymentId\s*:/);
+  it("anchors NEXT_PUBLIC_BUILD_ID on Vercel's NEXT_DEPLOYMENT_ID env var", () => {
+    // The bug we fixed (verification 2026-05-05): pre-fix derived
+    // NEXT_PUBLIC_BUILD_ID from VERCEL_GIT_COMMIT_SHA, but the actual
+    // server-emitted header (`x-nextjs-deployment-id`) carries the
+    // Vercel-internal `dpl_xxx` token. The two never matched →
+    // mismatch detection was non-functional. Anchoring both on
+    // NEXT_DEPLOYMENT_ID makes the comparison resolve.
+    expect(cfg).toMatch(/NEXT_PUBLIC_BUILD_ID\s*:\s*process\.env\.NEXT_DEPLOYMENT_ID/);
   });
 
-  it("derives deploymentId from the same SHA-based token as NEXT_PUBLIC_BUILD_ID", () => {
-    // Both must resolve to the same value or the comparison the client
-    // performs is meaningless. They share VERCEL_GIT_COMMIT_SHA.slice(0,12).
-    expect(cfg).toMatch(/deploymentId[\s\S]{0,200}?VERCEL_GIT_COMMIT_SHA[\s\S]{0,100}?slice\(0,\s*12\)/);
-    expect(cfg).toMatch(
-      /NEXT_PUBLIC_BUILD_ID[\s\S]{0,200}?VERCEL_GIT_COMMIT_SHA[\s\S]{0,100}?slice\(0,\s*12\)/,
-    );
+  it("does NOT set an explicit `deploymentId` config (Vercel auto-injects)", () => {
+    // First-pass fix tried `deploymentId: build-<sha12>` and Next
+    // refused the build with "env value does not match config". Pin
+    // the absence of explicit deploymentId here to prevent regressing
+    // back to that shape.
+    expect(cfg).not.toMatch(/^\s*deploymentId\s*:/m);
   });
 
-  it("keeps `generateBuildId` (build-output identity) AND `deploymentId` (response-header identity)", () => {
-    // generateBuildId controls the build artifact id (chunk filenames,
-    // SW cache key); deploymentId controls the response header. Both
-    // are required for the C-06 mechanism to work end-to-end. Neither
-    // replaces the other.
+  it("keeps `generateBuildId` (separate layer for the SW cache key)", () => {
+    // generateBuildId stays — it owns the build artifact identity for
+    // scripts/inject-sw-version.mjs. The skew-detection header surface
+    // is intentionally a different anchor (Vercel-deploy-scoped).
     expect(cfg).toMatch(/generateBuildId\s*\(/);
-    expect(cfg).toMatch(/deploymentId\s*:/);
   });
 });
 
@@ -78,14 +78,15 @@ describe("C-06 POSClient — reload-blocker wiring", () => {
 describe("C-06 fetch interceptor — header-name regression guard", () => {
   const banner = readRepo("src/components/DeployVersionBanner.tsx");
 
-  it("reads x-deployment-id (the canonical header Next emits with deploymentId)", () => {
-    // The original implementation read x-deployment-id but the config
-    // didn't set deploymentId, so the header was never emitted. With
-    // both halves of the fix in place, the canonical header name
-    // remains x-deployment-id — pin it here so a future refactor
-    // doesn't silently drift.
+  it("reads x-nextjs-deployment-id (the header Vercel/Next emit natively)", () => {
+    // Verification 2026-05-05: the original code read `x-deployment-id`
+    // but Vercel/Next don't emit that header without an explicit
+    // `deploymentId` config (which conflicts with NEXT_DEPLOYMENT_ID).
+    // The canonical header on a Vercel deploy is x-nextjs-deployment-id,
+    // carrying the same `dpl_xxx` value that NEXT_DEPLOYMENT_ID is
+    // injected as. Pin here so a future refactor doesn't silently drift.
     expect(banner).toMatch(
-      /response\.headers\.get\(\s*["']x-deployment-id["']\s*\)/,
+      /response\.headers\.get\(\s*["']x-nextjs-deployment-id["']\s*\)/,
     );
   });
 });

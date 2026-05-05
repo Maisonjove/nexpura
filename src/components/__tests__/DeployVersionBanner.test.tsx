@@ -27,7 +27,7 @@ import {
 
 function makeResponseWithHeader(value: string | null): Response {
   const headers = new Headers();
-  if (value !== null) headers.set('x-deployment-id', value);
+  if (value !== null) headers.set('x-nextjs-deployment-id', value);
   return new Response(null, { status: 200, headers });
 }
 
