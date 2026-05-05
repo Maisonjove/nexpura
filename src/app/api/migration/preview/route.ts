@@ -9,9 +9,11 @@ import {
   buildDefaultMappings,
   findDuplicateCustomer,
   findDuplicateInventory,
+  validateMappingCoverage,
   CUSTOMER_DEFAULT_MAPPINGS,
   INVENTORY_DEFAULT_MAPPINGS,
   REPAIR_DEFAULT_MAPPINGS,
+  type ColumnValidationResult,
   type MappingEntry,
 } from '@/lib/migration/engine';
 import logger from "@/lib/logger";
@@ -135,6 +137,11 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
     const files = (rawFiles ?? []) as MigrationFile[];
     const preview: Record<string, PreviewEntityStats> = {};
+    // M-12: per-file column-coverage validation. Surfaces missing
+    // required-field mappings before the user clicks Import so they
+    // can fix the CSV / mapping instead of running a 100%-error
+    // import.
+    const columnValidation: Record<string, ColumnValidationResult> = {};
     let totalWillCreate = 0;
     let totalDuplicates = 0;
     let totalSkipped = 0;
@@ -148,6 +155,9 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
 
       const rows = await parseFile(admin, file);
       const mappings = getMappings(file);
+
+      // M-12: validate column coverage and stash per-file.
+      columnValidation[file.id] = validateMappingCoverage(entity, mappings);
 
       // For preview: cap at 200 rows per file to keep it fast
       const sampleRows = rows.slice(0, 200);
@@ -208,6 +218,10 @@ export const POST = withSentryFlush(async (req: NextRequest) => {
     return NextResponse.json({
       success: true,
       preview,
+      // M-12: per-file column-coverage diagnostics. UI reads
+      // `columnValidation[fileId].ok` to gate Import + show each
+      // missing bucket's label.
+      columnValidation,
       totals: {
         will_create: totalWillCreate,
         duplicates: totalDuplicates,
