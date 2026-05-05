@@ -132,8 +132,19 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
         inviteEmail,
         inviteId: invite.id,
       });
+      // NEW-02: include both addresses in the 403 body so the client can
+      // render a meaningful "you're signed in as X, this invite is for Y"
+      // prompt with a logout-and-retry path. Enumeration-safe: this only
+      // fires AFTER the caller is authenticated via cookie session AND
+      // their token hashed to a real invite row. It's not a generic
+      // probe surface.
       return NextResponse.json(
-        { error: "This invitation is not for your account" },
+        {
+          error: "This invitation is not for your account",
+          code: "EMAIL_MISMATCH",
+          sessionEmail,
+          inviteEmail,
+        },
         { status: 403 }
       );
     }

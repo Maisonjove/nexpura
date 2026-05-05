@@ -11,6 +11,7 @@ import {
   updateTaskStatus,
   updateTeamMemberNotifications,
 } from "./actions";
+import { resendInvite } from "../roles/actions";
 import TeamMemberLocationModal from "@/components/TeamMemberLocationModal";
 import { MapPin, Bell, BellOff } from "lucide-react";
 
@@ -22,10 +23,26 @@ interface TeamMember {
   department: string | null;
   last_login_at: string | null;
   invite_accepted: boolean;
+  invite_expires_at: string | null;
   created_at: string;
   allowed_location_ids: string[] | null;
   notify_new_repairs: boolean;
   notify_new_bespoke: boolean;
+}
+
+// NEW-03: 3-state invite status. "active" once the invite is accepted;
+// "pending" while the invite link is still within its expiry window;
+// "expired" once invite_expires_at is in the past. Surfacing the
+// distinction lets owners spot stale rows and reissue them.
+type InviteStatus = "active" | "pending" | "expired";
+
+function getInviteStatus(m: Pick<TeamMember, "invite_accepted" | "invite_expires_at">): InviteStatus {
+  if (m.invite_accepted) return "active";
+  if (m.invite_expires_at) {
+    const expiresAt = new Date(m.invite_expires_at).getTime();
+    if (Number.isFinite(expiresAt) && expiresAt < Date.now()) return "expired";
+  }
+  return "pending";
 }
 
 interface Location {
@@ -213,6 +230,18 @@ export default function TeamClient({
     startTransition(async () => {
       await updateTaskStatus(taskId, status);
       router.refresh();
+    });
+  }
+
+  function handleResendInvite(memberId: string) {
+    startTransition(async () => {
+      const result = await resendInvite(memberId);
+      if (result?.error) {
+        showMsg(`Error: ${result.error}`);
+      } else {
+        showMsg("Invite resent — link refreshed.");
+        router.refresh();
+      }
     });
   }
 
@@ -456,9 +485,53 @@ export default function TeamClient({
                         : "Never"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs ${m.invite_accepted ? "text-green-600" : "text-amber-600"}`}>
-                        {m.invite_accepted ? "Active" : "Invited"}
-                      </span>
+                      {(() => {
+                        const status = getInviteStatus(m);
+                        if (status === "active") {
+                          return (
+                            <span
+                              data-testid="invite-status-badge"
+                              data-status="active"
+                              className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700"
+                            >
+                              Active
+                            </span>
+                          );
+                        }
+                        if (status === "pending") {
+                          return (
+                            <span
+                              data-testid="invite-status-badge"
+                              data-status="pending"
+                              className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700"
+                            >
+                              Pending
+                            </span>
+                          );
+                        }
+                        // expired
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span
+                              data-testid="invite-status-badge"
+                              data-status="expired"
+                              className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600"
+                            >
+                              Expired
+                            </span>
+                            {isOwner && (
+                              <button
+                                data-testid="invite-resend-button"
+                                onClick={() => handleResendInvite(m.id)}
+                                disabled={isPending}
+                                className="text-[11px] text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2 disabled:opacity-50"
+                              >
+                                Resend invite
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {isOwner && (
