@@ -1225,17 +1225,71 @@ Don't replace unit tests with contract tests — keep both. Unit tests
 are still the cheapest way to cover branching logic. The contract test
 is what catches the assumption error in the unit-test fixtures.
 
+### Canonical example #2 — SMTP fix verification (audit log `53f2fbf0`, 2026-05-06)
+
+When the Supabase Auth SMTP credentials were rotated to fix
+customer-blocking signup failures, the initial verification used
+`auth.admin.generateLink({type: "recovery"})`. The endpoint
+returned an `action_link` field (Supabase happily accepted the
+call, no error), so the fix was reported as "shipped". Joey
+checked his inbox — no email arrived. Investigation:
+
+```bash
+# Resend logs (last 50, filtered for our domain) — empty for the
+# trigger window
+curl -s "https://api.resend.com/emails?limit=50" \
+  -H "Authorization: Bearer $RESEND_KEY" \
+  | jq '.data[] | select(.created_at > "2026-05-06T02:30")'
+# → no matches
+
+# Trigger via the actual customer-facing endpoint instead
+curl -X POST "https://<project>.supabase.co/auth/v1/recover" \
+  -H "apikey: $ANON_KEY" -H "Content-Type: application/json" \
+  -d '{"email":"germanijoey@yahoo.com"}'
+# → "Reset Your Password" landed in Resend at 03:21:28, status=delivered
+```
+
+The `auth.admin.generate_link` endpoint is a programmatic helper
+that returns the link for tooling use — it does not fire SMTP. The
+public `/auth/v1/recover` endpoint is what real users hit, and it
+DOES fire SMTP. The "fix verification" via the admin endpoint was
+testing a different boundary than the customer pipeline.
+
+Same root shape as the C-06 example: testing the wrong boundary
+gave false confidence that the production path works.
+
+### Detection rule for external-integration verification
+
+When verifying any external integration (SMTP, payment gateways,
+webhook delivery, third-party APIs that bridge to your customer
+flows): exercise the same code path a real customer would. Verify
+the artifact lands in the actual delivery surface — Resend logs,
+Stripe dashboard, the receiving webhook target — NOT just that the
+admin/test/dev-mode call returned 200.
+
+Admin endpoints often skip the customer-facing pipeline entirely
+because they're designed for debugging or programmatic-tooling use.
+A 200 from `auth.admin.generate_link` proves the link could be
+generated; it does NOT prove that the SMTP layer downstream of a
+real signup works.
+
 ### Cross-references
 
 - §14 — `"use server"` re-export pitfall (caught by `pnpm build`,
   missed by tsc + vitest; same shape: a test that doesn't run the
   real boundary's machinery can't see the failure)
+- §18 — Mgmt API replace-block semantics (the SMTP fix's wobble
+  surfaced this companion lesson; cross-ref audit log `53f2fbf0`)
 - PR #157 commit `5d031c7b` — the fix for the header-name assumption
 - PR #157 commit `6a71881d` — the original failure shape (kept in
   history as the canonical reference; see commit body)
 - `src/lib/__tests__/c06-config-contract.test.ts` — the contract test
   added in `5d031c7b` that probes the actual surface (next.config.ts
   output + bundle inlining + header name in source)
+- Audit log entry `53f2fbf0` — the SMTP fix's full state-transition
+  record, including the pre-fix encoded prefix (`9537ca1c06bc`),
+  post-fix prefix (`5725edef6405`), canonical key reference, and
+  the wobble note from the §18 replace-block lesson
 
 ---
 
@@ -1340,3 +1394,166 @@ boolean return CAN be correct in scripts that don't have a dry-run
 mode at all. ESLint can't reliably distinguish. Manual checklist
 (above) + unit-test discipline are the gates. If this bug class
 recurs despite the checklist, revisit.
+
+---
+
+## 17. Reconciliation contract — sale_line_items as canonical source
+
+A1 H-02 (2026-05-06): the `sale_items` table is the canonical
+line-level source for every financial view. Sales / Financials /
+Reports / EOD / Reconciliation page all project from `sale_items`,
+not from `sales.total` or any aggregated alternative.
+
+### The invariants
+
+For any (tenant_id, date_range) tuple:
+
+1. **Sales top-line vs line items**:
+   `sum(sales.total)` over the range = `sum(sale_items.line_total)`
+   over the same range, within ±$0.01.
+2. **Refunds top-line vs line items**:
+   `sum(refunds.total)` = `sum(refund_items.line_total)`,
+   within ±$0.01.
+3. **GL refunds invariant**:
+   `sum(gl_entries.amount where entry_type='refund')` =
+   `−1 × sum(refunds.total)`. Sign convention: GL refund amounts
+   are negative because money flows OUT.
+4. **GL sales invariant** (post-A1 only):
+   `sum(gl_entries.amount where entry_type='sale')` =
+   `sum(sales.total)`. Pre-A1 sales don't write a `gl_entries`
+   row, so the delta surfaces the unflipped tenant fraction during
+   the A1 staged rollout window.
+
+These invariants are exercised by the property tests in
+`src/lib/__tests__/a1-reconciliation-property.test.ts` and surfaced
+to operators via `/financials/reconciliation` (owner+manager only,
+gated on `tenants.a1_money_correctness`).
+
+### The 30-day window for refunds — and why margin stays accurate
+
+A1 ships H-01: `sale_items.cost_at_sale` is a snapshot of the
+inventory cost at the moment of sale, locked at write. The margin
+formula reads `cost_at_sale`, NOT live `inventory.cost_price`.
+
+Reasoning: a reprice of inventory after a sale used to silently
+change the historical sale's margin. With `cost_at_sale` frozen at
+write time, margins are immune to retroactive cost edits. Pin'd by
+the H-01 migration (`20260506_a1_h01_cost_at_sale_completed_at.sql`).
+
+### EOD aggregator (C-03 v2) — completed_at + line_items
+
+EOD uses `sales.completed_at` (added in the H-01 migration) instead
+of the user-supplied `sale_date` for day-boundary calculations.
+Combined with the existing `localDayBoundsToUtcIso` tenant-TZ
+helper, this makes EOD day boundaries reflect the actual sale-
+completion moment, not the operator-typed display date.
+
+Aggregation projects from `sale_items.line_total` and groups by
+tender / location / staff. Dedupe via `sale.id` so an unusual
+line-level join shape can't double-count. Property tests:
+`src/lib/__tests__/a1-eod-v2-property.test.ts`.
+
+### When the rule applies
+
+Any new financial reporting / aggregation surface in this codebase
+MUST project from `sale_items.line_total`, not `sales.total`. The
+reconciliation page exists specifically to surface deltas when this
+contract is violated. If you build a new view that shows different
+numbers, you have either (a) a bug, or (b) a deliberate exception
+that needs documenting here.
+
+### Canonical references
+
+- `src/lib/finance/reconciliation.ts` — aggregator + delta helper
+- `src/app/(app)/financials/reconciliation/page.tsx` — UI
+- `src/lib/eod/v2-aggregator.ts` — EOD v2
+- `src/lib/finance/banker-rounding.ts` — M-01 line-level tax
+- `supabase/migrations/20260506_a1_h01_cost_at_sale_completed_at.sql` — H-01 columns
+
+---
+
+## 18. Mgmt API replace-block semantics
+
+When modifying any Supabase Mgmt API config block (auth/SMTP,
+storage, edge functions, etc.), a partial-field PATCH may be
+treated as a FULL-BLOCK REPLACE — unspecified fields get nulled.
+
+### Canonical example — SMTP fix wobble (2026-05-06, audit `53f2fbf0`)
+
+The first attempt at the SMTP credentials fix sent only the field
+that needed updating:
+
+```bash
+# WRONG — only sends smtp_pass
+curl -X PATCH "$BASE/v1/projects/$REF/config/auth" \
+  -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  -d '{"smtp_pass": "re_PBrzD..."}'
+```
+
+Read-back showed the API had wiped `smtp_host`, `smtp_user`,
+`smtp_admin_email`, `smtp_sender_name`, `smtp_port`, and
+`smtp_max_frequency` to null. SMTP was unconfigured for ~20
+seconds before the second PATCH restored everything.
+
+The behaviour wasn't documented in the API reference; it surfaced
+during the live fix and was caught only because we read back
+immediately.
+
+### Required practice
+
+Whenever modifying ANY Mgmt API config block:
+
+1. **Read the full block first** (or the section being modified).
+2. **Construct the full block locally**, modifying only the fields
+   you intend to change.
+3. **PATCH the entire block** — never send a single-field partial.
+4. **Read back to verify** all fields persisted correctly. The
+   read-back is the boundary check — the API can return 200
+   without preserving the rest of the block.
+
+```bash
+# CORRECT — full block restoration with the changed field
+curl -X PATCH "$BASE/v1/projects/$REF/config/auth" \
+  -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  -d '{
+    "smtp_admin_email": "noreply@nexpura.com",
+    "smtp_host": "smtp.resend.com",
+    "smtp_port": "465",
+    "smtp_user": "resend",
+    "smtp_pass": "re_PBrzD...",
+    "smtp_sender_name": "Nexpura",
+    "smtp_max_frequency": 60
+  }'
+```
+
+### Surface for analogous APIs
+
+Suspected to share the replace-block semantic (verify per-API
+before each first use):
+
+- `/v1/projects/{ref}/config/auth` (auth + SMTP) — confirmed
+  replace-block 2026-05-06.
+- `/v1/projects/{ref}/config/storage` — likely (untested).
+- `/v1/projects/{ref}/config/database` — likely (untested).
+- Project-level secrets endpoints — likely.
+- Edge function update endpoints — likely.
+
+When in doubt: read full block, construct full block, PATCH full
+block, read back. The cost of a few extra fields in the request is
+nothing compared to silently nulling production config.
+
+### Why no lint rule / no automated check
+
+The pattern is ad-hoc Mgmt API usage from one-off scripts and
+investigation paths. There's no lint surface or programmatic
+enforcement that fits cleanly. Manual practice (the 4-step rule
+above) + audit-log every state transition (so the read-back
+shows up in the audit) are the gates.
+
+### Canonical references
+
+- Audit log `53f2fbf0` (database `public.audit_logs`) — full
+  state transition for the SMTP fix, including pre-fix and post-fix
+  encoded smtp_pass prefixes + the wobble note.
+- §15 canonical example #2 — the same incident's "wrong-boundary
+  verification" lesson (admin generate_link vs public /recover).
