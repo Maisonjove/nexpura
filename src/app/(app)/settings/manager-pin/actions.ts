@@ -98,6 +98,22 @@ export async function setManagerPin(
   }
 }
 
+export async function hasManagerPin(): Promise<{ hasPin: boolean; error?: string }> {
+  let ctx;
+  try { ctx = await requireAuth(); }
+  catch { return { hasPin: false, error: "Not authenticated" }; }
+
+  const admin = createAdminClient();
+  const { data: member } = await admin
+    .from("team_members")
+    .select("manager_pin_hash")
+    .eq("user_id", ctx.userId)
+    .eq("tenant_id", ctx.tenantId)
+    .maybeSingle();
+
+  return { hasPin: !!member?.manager_pin_hash };
+}
+
 export async function verifyManagerPin(
   pin: string,
 ): Promise<{ valid?: boolean; error?: string }> {
