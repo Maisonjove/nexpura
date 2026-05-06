@@ -7,6 +7,7 @@ import logger from "@/lib/logger";
 import { inviteAcceptSchema } from "@/lib/schemas";
 import { withSentryFlush } from "@/lib/sentry-flush";
 import { withAuditLog, setAuditContext } from "@/lib/audit-wrapper";
+import { acceptInvite } from "@/lib/team-invites/accept-invite";
 
 /**
  * POST /api/invite/accept
@@ -109,6 +110,42 @@ async function handleInviteAccept(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!invite) {
+      // Bug B (multi-tab race) — idempotent fallback.
+      //
+      // Symptom pre-fix: User opens the invite link in two tabs. Tab 1
+      // accepts successfully (clears invite_token + invite_token_hash).
+      // Tab 2 POSTs the same token a moment later — both lookups miss
+      // (tokens are now NULL on the row) and Tab 2 receives a 400
+      // "Invalid or expired invitation" despite already being a valid
+      // member of the tenant.
+      //
+      // Fallback: if the session user is already a team_member with
+      // invite_accepted=true (any tenant), and that row's email matches
+      // the session user's email, return 200 idempotent success. The
+      // email-match guard preserves the security property — a user
+      // can't piggyback on someone else's already-accepted invite by
+      // brute-forcing the token.
+      const { data: alreadyAccepted } = await admin
+        .from("team_members")
+        .select("id, tenant_id, email, role")
+        .eq("user_id", sessionUser.id)
+        .eq("invite_accepted", true)
+        .limit(1)
+        .maybeSingle();
+      if (alreadyAccepted) {
+        const acceptedEmail = ((alreadyAccepted as { email?: string | null }).email ?? "")
+          .trim()
+          .toLowerCase();
+        const sessionEmail = (sessionUser.email ?? "").trim().toLowerCase();
+        if (sessionEmail && acceptedEmail && sessionEmail === acceptedEmail) {
+          // Idempotent success — same shape as a fresh accept (just
+          // {success:true}; the audit wrapper does not double-emit
+          // because there's no setAuditContext call on this path —
+          // there's nothing new to record, the original accept already
+          // emitted on Tab 1's request).
+          return NextResponse.json({ success: true });
+        }
+      }
       return NextResponse.json({ error: "Invalid or expired invitation" }, { status: 400 });
     }
 
@@ -155,42 +192,26 @@ async function handleInviteAccept(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Update the users table with tenant_id and role
-    // Map technician → staff at the users.role layer per Phase A scope.
-    // `users.role` CHECK constraint allows ['owner', 'manager', 'staff'] only;
-    // 'technician' is a team_members.role concept (job designation), not a
-    // permissions tier. team_members.role stays 'technician' for filtering
-    // (e.g., RepairsKanban "Assigned Technician") — only users.role maps.
-    const { error: userError } = await admin
-      .from("users")
-      .upsert({
-        id: userId,
+    // Delegate the actual mutation to the shared helper. Identical
+    // behaviour to the prior inline code:
+    //   - users.upsert with technician → staff role mapping (PR #208 Q5)
+    //   - team_members.update: invite_accepted=true, both tokens cleared
+    // The helper is the single source of truth for both this route AND
+    // the new /invite/[token] server-side gate (Bug D fix).
+    const result = await acceptInvite(
+      admin,
+      {
+        id: invite.id,
         tenant_id: invite.tenant_id,
-        role: invite.role === 'technician' ? 'staff' : invite.role,
-        full_name: invite.name,
+        name: invite.name,
         email: invite.email,
-      }, { onConflict: "id" });
-
-    if (userError) {
-      logger.error("Failed to update user:", userError);
-      return NextResponse.json({ error: "Failed to link user to tenant" }, { status: 500 });
-    }
-
-    // Mark invite as accepted and link to user. Clear both the plain
-    // token and the hash so the link cannot be replayed.
-    const { error: updateError } = await admin
-      .from("team_members")
-      .update({
-        user_id: userId,
-        invite_accepted: true,
-        invite_token: null,
-        invite_token_hash: null,
-      })
-      .eq("id", invite.id);
-
-    if (updateError) {
-      logger.error("Failed to update team member:", updateError);
-      return NextResponse.json({ error: "Failed to accept invitation" }, { status: 500 });
+        role: invite.role,
+      },
+      userId,
+      "api_route",
+    );
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
     // C-05 canary: stash audit context for the wrapper. The wrapper
@@ -209,6 +230,7 @@ async function handleInviteAccept(request: NextRequest): Promise<NextResponse> {
       },
       metadata: {
         canary: "invite_accept",
+        accepted_via: "api_route",
       },
     });
     return okResponse;
