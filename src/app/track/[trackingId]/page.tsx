@@ -128,7 +128,12 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
       estimated_completion_date: repair.estimated_completion_date,
       created_at: repair.created_at,
       tenant: {
-        business_name: tenant?.business_name || "Jeweller",
+        // R6.5-F6 (item 17): when business_name is null/empty the page
+        // previously fell back to the bare word "Jeweller", which reads
+        // as a placeholder/typo to the customer (branding leak). Match
+        // the email surface (`Your Jeweller` in src/lib/tracking-email.ts)
+        // for a softer, brand-neutral fallback.
+        business_name: tenant?.business_name || "Your jeweller",
         logo_url: tenant?.logo_url,
       },
       attachments: signedAttachments,
@@ -202,7 +207,9 @@ async function fetchOrderData(trackingId: string): Promise<OrderData | null> {
       approval_notes: (bespoke.approval_notes as string | null) ?? null,
       approved_at: (bespoke.approved_at as string | null) ?? null,
       tenant: {
-        business_name: tenant?.business_name || "Jeweller",
+        // R6.5-F6 (item 17): see note on the repair branch above. Same
+        // softer fallback for bespoke jobs when business_name is empty.
+        business_name: tenant?.business_name || "Your jeweller",
         logo_url: tenant?.logo_url,
       },
       attachments: signedAttachments,
@@ -260,6 +267,11 @@ async function TrackingPage({ params }: PageProps) {
 }
 
 function TrackOrderNotFound({ trackingId }: { trackingId: string }) {
+  // R6.5-F7 (item 18): give the customer somewhere to go from the dead
+  // end — a "Try another tracking ID" primary CTA into /track plus a
+  // softer prompt to contact the jeweller. Pre-fix the only link was
+  // back to the marketing home which doesn't help a customer that just
+  // needs to fix a typo'd tracking number.
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-8 max-w-md w-full text-center">
@@ -274,16 +286,24 @@ function TrackOrderNotFound({ trackingId }: { trackingId: string }) {
           <span className="font-mono text-stone-700">{trackingId}</span>.
         </p>
         <p className="text-stone-500 mb-6 text-sm">
-          Please double-check the ID in your email or text from the store. Tracking IDs look like{" "}
+          Check the link your jeweller sent you, or contact them for help. Tracking IDs look like{" "}
           <span className="font-mono text-stone-700">RPR-XXXXXXXX</span> or{" "}
           <span className="font-mono text-stone-700">BSP-XXXXXXXX</span>.
         </p>
-        <a
-          href="/"
-          className="inline-block text-amber-700 hover:text-amber-800 font-medium"
-        >
-          Go to Nexpura →
-        </a>
+        <div className="space-y-3">
+          <a
+            href="/track"
+            className="block w-full py-3 px-4 bg-stone-900 text-white font-medium rounded-lg hover:bg-stone-800 transition-colors"
+          >
+            Try another tracking ID
+          </a>
+          <a
+            href="/"
+            className="inline-block text-amber-700 hover:text-amber-800 font-medium text-sm"
+          >
+            Go to Nexpura →
+          </a>
+        </div>
       </div>
     </div>
   );
