@@ -593,6 +593,13 @@ async function processRefundV2(
   // Audit log mirrors the legacy path's `refund_create` event so
   // /settings/activity surfaces both flag-on and flag-off refunds
   // identically. The RPC already wrote the gl_entries row.
+  //
+  // Cluster-PR item 10 (Q5 instrumentation gap):
+  // flowVersion='v2' moved from newData → metadata so the v2 vs legacy
+  // dispatch is provable from audit_logs alone (a future v3 just
+  // ships another metadata.flowVersion bump and the existing query
+  // surfaces still resolve correctly). newData stays as the
+  // user-meaningful payload; metadata is for system instrumentation.
   await logAuditEvent({
     tenantId,
     userId,
@@ -608,6 +615,8 @@ async function processRefundV2(
       originalSaleId: p.originalSaleId,
       itemCount: p.items.length,
       pinUsed: requiresPin,
+    },
+    metadata: {
       flowVersion: "v2",
     },
   });
