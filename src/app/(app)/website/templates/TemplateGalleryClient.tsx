@@ -148,9 +148,18 @@ export default function TemplateGalleryClient({
   // M-09: shared preview-iframe modal — rendered for both `embedded`
   // and full-page variants. Sandbox flags allow scripts (template
   // pages render section components that may include client JS) +
-  // same-origin (the iframe loads /website/templates/[id] from the
-  // same Vercel deployment). No allow-popups / allow-top-navigation
-  // — keeps the preview locked inside the iframe.
+  // same-origin (the iframe loads /website/templates/[id]/embed from
+  // the same Vercel deployment). No allow-popups /
+  // allow-top-navigation — keeps the preview locked inside the iframe.
+  //
+  // R6-F14 (item 16): src now points at the sandboxed (public) embed
+  // route at /website/templates/[id]/embed instead of
+  // /website/templates/[id]?embed=1. The latter sits inside the (app)
+  // route group whose layout renders TopNav + admin chrome; the
+  // ?embed=1 flag only hid the in-page admin BAR, not the surrounding
+  // (app)/layout.tsx wrapper. The new (public) route inherits only the
+  // bare root layout, so the iframe shows a clean customer-facing
+  // render with no admin nav leaking through.
   const previewModal = previewTemplate ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div
@@ -187,7 +196,7 @@ export default function TemplateGalleryClient({
           </div>
         </div>
         <iframe
-          src={`/website/templates/${previewTemplate.id}?embed=1`}
+          src={`/website/templates/${previewTemplate.id}/embed`}
           title={`${previewTemplate.name} preview`}
           className="flex-1 w-full bg-white"
           sandbox="allow-scripts allow-same-origin"
