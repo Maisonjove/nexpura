@@ -59,9 +59,18 @@ async function InviteBody({ paramsPromise }: { paramsPromise: Promise<{ token: s
     redirect("/login");
   }
 
+  // Fallback chain: tenants.business_name → tenants.name → "your team".
+  // Many tenants (e.g. dogfood `316a3313`) only have `name` set and leave
+  // `business_name` NULL — pre-fix the placeholder rendered as the literal
+  // "Join <unknown>" headline (Bug 1.5, hit 2026-05-06 inviting
+  // joeygermani11@icloud.com).
+  const tenants = invite.tenants as
+    | { business_name?: string | null; name?: string | null }
+    | null;
   const businessName =
-    (invite.tenants as { business_name?: string } | null)?.business_name ||
-    "Unknown Business";
+    tenants?.business_name?.trim() ||
+    tenants?.name?.trim() ||
+    "your team";
 
   return (
     <InviteClient
@@ -87,7 +96,7 @@ interface InviteRow {
   role: string;
   invite_accepted: boolean;
   tenant_id: string;
-  tenants: { business_name: string | null } | null;
+  tenants: { business_name: string | null; name: string | null } | null;
 }
 
 async function loadInviteByToken(token: string): Promise<InviteRow | null> {
@@ -101,7 +110,7 @@ async function loadInviteByToken(token: string): Promise<InviteRow | null> {
       role,
       invite_accepted,
       tenant_id,
-      tenants!inner(business_name)
+      tenants!inner(business_name, name)
     `)
     .eq("invite_token", token)
     .single();

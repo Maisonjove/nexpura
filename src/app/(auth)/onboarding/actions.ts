@@ -7,6 +7,7 @@ import { initDefaultPermissions } from "@/lib/permissions";
 import logger from "@/lib/logger";
 import { invalidateUserCache } from "@/lib/cached-auth";
 import { ensureOwnerTeamMembership } from "@/lib/owner-team-membership";
+import { pendingInviteForEmail } from "@/lib/team-invites/pending-invite";
 
 import { flushSentry } from "@/lib/sentry-flush";
 // ============================================================================
@@ -59,6 +60,32 @@ export async function completeOnboarding(
 
     if (!user) {
       return { error: "Not authenticated" };
+    }
+
+    // Bug 2 belt (2026-05-06): pending-invite gate. The page-level
+    // server-component shim in onboarding/page.tsx already redirects
+    // an invitee to /invite/{token} before the form ever renders, but
+    // a direct POST to this server action (or a race against the page
+    // load) could still slip through and create an orphan tenant. So
+    // we re-run the same predicate here — same helper, same semantic —
+    // and bail with a hard error string. NO tenant insert happens.
+    if (user.email) {
+      const adminGate = createAdminClient();
+      const pending = await pendingInviteForEmail(adminGate, user.email);
+      if (pending) {
+        const { data: tenantRow } = await adminGate
+          .from("tenants")
+          .select("business_name, name")
+          .eq("id", pending.tenant_id)
+          .maybeSingle();
+        const businessName =
+          tenantRow?.business_name?.trim() ||
+          tenantRow?.name?.trim() ||
+          "your team";
+        return {
+          error: `You have a pending invite for ${businessName}. Please open the invite link from your email to accept it.`,
+        };
+      }
     }
 
     // Validate and sanitize inputs
