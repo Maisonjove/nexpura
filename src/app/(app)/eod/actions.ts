@@ -131,6 +131,97 @@ export async function getEODSummary(date?: string, locationId?: string | null): 
     tenantTimezone,
   );
 
+  // A1 dispatch (2026-05-06): when tenants.a1_money_correctness=TRUE,
+  // route through the v2 aggregator (src/lib/eod/v2-aggregator.ts).
+  // v2 projects from sale_items.line_total (the canonical line-level
+  // source per H-02 / CONTRIBUTING.md §17), groups by tender + location
+  // + STAFF (legacy only does tender + location), and dedupes by
+  // sale.id. Same flag the refund dispatchers + /financials/reconciliation
+  // page gate on. Pre-A1 tenants stay on the legacy path below
+  // (unchanged) so the staged rollout is non-disruptive.
+  const { data: tenantFlag } = await admin
+    .from("tenants")
+    .select("a1_money_correctness")
+    .eq("id", tenantId)
+    .single();
+  if (tenantFlag?.a1_money_correctness === true) {
+    const { getEodV2 } = await import("@/lib/eod/v2-aggregator");
+    const v2 = await getEodV2(admin, tenantId, {
+      startOfDayUtc: startOfDay,
+      endOfDayUtc: endOfDay,
+      locationId: locationId ?? null,
+    });
+    // Map v2's by-tender shape into the legacy totalSalesCash/Card/etc.
+    // fields the existing EODSummary requires. Same field names; v2
+    // just sources from sale_items.line_total instead of sales.total.
+    // Caller (the EOD page) doesn't see a difference in shape.
+    const tenderMap = new Map(v2.byTender.map((t) => [t.tender, t.amount]));
+    const totalSalesCash = tenderMap.get("cash") ?? 0;
+    const totalSalesCard = tenderMap.get("card") ?? 0;
+    const totalSalesTransfer = tenderMap.get("transfer") ?? 0;
+    const totalSalesVoucher = tenderMap.get("voucher") ?? 0;
+    const totalSalesLayby = tenderMap.get("layby") ?? 0;
+    const totalSalesMixed = tenderMap.get("mixed") ?? 0;
+
+    // Refunds: still pulled via the existing query shape below for
+    // the v2 path, since the v2 aggregator covers sales-side only.
+    let refundsQueryV2 = admin
+      .from("refunds")
+      .select("refund_method, total")
+      .eq("tenant_id", tenantId)
+      .gte("created_at", startOfDay)
+      .lte("created_at", endOfDay)
+      .eq("status", "completed");
+    if (locationId) refundsQueryV2 = refundsQueryV2.eq("location_id", locationId);
+    const { data: refundsV2 } = await refundsQueryV2;
+    let totalRefundsCashV2 = 0, totalRefundsCardV2 = 0;
+    for (const r of refundsV2 ?? []) {
+      const t = Number(r.total ?? 0);
+      if (r.refund_method === "cash") totalRefundsCashV2 += t;
+      else totalRefundsCardV2 += t;
+    }
+
+    // Existing reconciliation lookup mirrors the legacy path below.
+    let existingQueryV2 = admin
+      .from("eod_reconciliations")
+      .select(
+        "id, cash_counted, cash_variance, opening_float, closing_float, notes, status, submitted_at, location_id",
+      )
+      .eq("tenant_id", tenantId)
+      .eq("reconciliation_date", targetDate);
+    if (locationId) existingQueryV2 = existingQueryV2.eq("location_id", locationId);
+    else existingQueryV2 = existingQueryV2.is("location_id", null);
+    const { data: existingV2 } = await existingQueryV2.maybeSingle();
+
+    const summary: EODSummary = {
+      date: targetDate,
+      totalSalesCash,
+      totalSalesCard,
+      totalSalesTransfer,
+      totalSalesVoucher,
+      totalSalesLayby,
+      totalSalesMixed,
+      totalRefundsCash: totalRefundsCashV2,
+      totalRefundsCard: totalRefundsCardV2,
+      totalRevenue: v2.lineItemsTotal - (totalRefundsCashV2 + totalRefundsCardV2),
+      transactionCount: v2.uniqueSaleIds,
+      cashExpected: totalSalesCash - totalRefundsCashV2,
+      existingReconciliation: existingV2
+        ? {
+            id: existingV2.id,
+            cash_counted: existingV2.cash_counted,
+            cash_variance: existingV2.cash_variance,
+            opening_float: existingV2.opening_float,
+            closing_float: existingV2.closing_float,
+            notes: existingV2.notes,
+            status: existingV2.status,
+            submitted_at: existingV2.submitted_at,
+          }
+        : null,
+    };
+    return { data: summary };
+  }
+
   // Fetch all sales for the day (optionally filtered by location)
   let salesQuery = admin
     .from("sales")

@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 import { updateSaleStatus, deleteSale, generatePassportFromSaleItem, duplicateSale } from "../actions";
 import { processRefund } from "../../refunds/actions";
 import { recordLaybyPayment } from "@/app/(app)/pos/layby-actions";
+import {
+  setManagerPin,
+  verifyManagerPin,
+  hasManagerPin,
+} from "@/app/(app)/settings/manager-pin/actions";
+import ManagerPinModal from "@/components/ManagerPinModal";
+
+const MANAGER_PIN_REQUIRED_PREFIX = "Manager PIN required";
+const MANAGER_PIN_WINDOW_PREFIX = "This sale is older than 30 days";
 
 interface SaleItem {
   id: string;
@@ -100,6 +109,13 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
   const [refundMethod, setRefundMethod] = useState("card");
   const [refundNotes, setRefundNotes] = useState("");
   const [refundError, setRefundError] = useState<string | null>(null);
+  // Manager-PIN gate (A1 Day 4 component 6). When processRefund returns
+  // a "Manager PIN required" error, we open this modal in either 'set'
+  // (user has no PIN yet — surface PIN + Confirm PIN form) or 'verify'
+  // (user has a PIN — surface single-input form). On success, retry
+  // processRefund with the verified PIN as managerPin.
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinModalMode, setPinModalMode] = useState<"set" | "verify">("verify");
   // Layby payment state
   const [showLaybyModal, setShowLaybyModal] = useState(false);
   const [laybyAmount, setLaybyAmount] = useState("");
@@ -134,6 +150,48 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
     });
   }
 
+  function buildRefundParams(managerPin?: string) {
+    const selectedItems = items.filter((item) => refundItems[item.id]);
+    return {
+      originalSaleId: sale.id,
+      reason: refundReason,
+      refundMethod,
+      notes: refundNotes,
+      managerPin,
+      items: selectedItems.map((item) => ({
+        original_sale_item_id: item.id,
+        inventory_id: item.inventory_id ?? null,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        line_total: item.line_total,
+        restock: !!item.inventory_id,
+      })),
+    };
+  }
+
+  async function attemptRefund(managerPin?: string): Promise<void> {
+    const result = await processRefund(buildRefundParams(managerPin));
+    if (!result?.error) return;
+
+    // PIN-gate dispatch. Two error shapes from processRefundV2 land
+    // here: "This sale is older than 30 days. A manager PIN is
+    // required..." (no PIN passed yet) and "Manager PIN required, but
+    // you haven't set one yet..." (PIN passed but no hash on file —
+    // shouldn't happen on the retry path because we pre-check hasPin,
+    // but kept defensively).
+    const isPinRequired =
+      result.error.startsWith(MANAGER_PIN_WINDOW_PREFIX) ||
+      result.error.startsWith(MANAGER_PIN_REQUIRED_PREFIX);
+    if (isPinRequired) {
+      const status = await hasManagerPin();
+      setPinModalMode(status.hasPin ? "verify" : "set");
+      setShowPinModal(true);
+      return;
+    }
+    setRefundError(result.error);
+  }
+
   function handleProcessRefund() {
     setRefundError(null);
     const selectedItems = items.filter((item) => refundItems[item.id]);
@@ -145,24 +203,25 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
       setRefundError("Refund reason is required");
       return;
     }
-    startTransition(async () => {
-      const result = await processRefund({
-        originalSaleId: sale.id,
-        reason: refundReason,
-        refundMethod,
-        notes: refundNotes,
-        items: selectedItems.map((item) => ({
-          original_sale_item_id: item.id,
-          inventory_id: item.inventory_id ?? null,
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          line_total: item.line_total,
-          restock: !!item.inventory_id,
-        })),
-      });
-      if (result?.error) setRefundError(result.error);
+    startTransition(() => {
+      void attemptRefund();
     });
+  }
+
+  function handlePinSubmit(pin: string) {
+    setShowPinModal(false);
+    startTransition(() => {
+      void attemptRefund(pin);
+    });
+  }
+
+  function handlePinCancel() {
+    setShowPinModal(false);
+    // Caller's refund attempt aborts cleanly. Surface a hint in the
+    // refund modal so the user knows why nothing happened.
+    setRefundError(
+      "Refund cancelled — manager PIN is required to refund a sale older than 30 days.",
+    );
   }
 
   function handleGeneratePassport(item: SaleItem) {
@@ -835,6 +894,16 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
             </div>
           </div>
         </div>
+      )}
+
+      {showPinModal && (
+        <ManagerPinModal
+          mode={pinModalMode}
+          onSetPin={setManagerPin}
+          onVerifyPin={verifyManagerPin}
+          onSubmit={handlePinSubmit}
+          onCancel={handlePinCancel}
+        />
       )}
     </div>
   );

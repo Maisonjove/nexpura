@@ -40,18 +40,38 @@ export async function processRefund(params: {
   originalSaleId: string;
   reason: string;
   refundMethod: string;
+  refundType?: "full" | "partial" | "store_credit";
   items: RefundItemInput[];
   notes?: string;
+  gatewayRef?: string;
+  managerPin?: string;
 }): Promise<{ id?: string; refundNumber?: string; error?: string }> {
   let ctx;
   try { ctx = await getAuthContext(); } catch { return { error: "Not authenticated" }; }
   const { admin, userId, tenantId } = ctx;
 
+  // A1 dispatch (2026-05-06): when tenants.a1_money_correctness is
+  // TRUE, route through the new process_refund_v2 RPC. The RPC
+  // wraps refund + items + stock + GL + parent-sale-flip in a single
+  // PostgreSQL transaction — no saga rollback path, no split-state
+  // failure modes. Falls through to the legacy saga flow below when
+  // the flag is FALSE (default), so existing tenants are unchanged
+  // until staged rollout enables the flag for them.
+  const { data: tenantFlag } = await admin
+    .from("tenants")
+    .select("a1_money_correctness")
+    .eq("id", tenantId)
+    .single();
+
+  if (tenantFlag?.a1_money_correctness === true) {
+    return processRefundV2({ ...params, ctx: { admin, userId, tenantId } });
+  }
+
   // IDEMPOTENCY: Prevent duplicate refund processing
   // Fingerprint based on sale + items being refunded
   const itemFingerprint = params.items.map(i => `${i.original_sale_item_id}:${i.quantity}`).sort().join(",");
   const fingerprint = `${params.originalSaleId}:${params.refundMethod}:${itemFingerprint}`;
-  
+
   const result = await withIdempotency(
     "refund",
     tenantId,
@@ -413,6 +433,188 @@ export async function processRefund(params: {
  *
  * Spec: Approve / cancel state machine. Void is the cancel transition.
  */
+
+// ──────────────────────────────────────────────────────────────────
+// A1 Day 2 — process_refund_v2 RPC dispatch
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * 30-day window for refunds-without-PIN. Beyond this from the sale's
+ * created_at (sales.completed_at doesn't exist as a column yet —
+ * H-01 Day 4 will add it) the refund requires a manager PIN.
+ *
+ * Refunds with no original_sale_id always require a PIN regardless
+ * of date — but processRefund's current shape always takes
+ * originalSaleId, so that branch isn't reachable from this path.
+ * Day 3 will add a /refunds/new-without-sale flow that hits this
+ * predicate explicitly.
+ */
+const REFUND_PIN_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface RpcDispatchParams {
+  originalSaleId: string;
+  reason: string;
+  refundMethod: string;
+  refundType?: "full" | "partial" | "store_credit";
+  items: RefundItemInput[];
+  notes?: string;
+  gatewayRef?: string;
+  managerPin?: string;
+  ctx: {
+    admin: ReturnType<typeof createAdminClient>;
+    userId: string;
+    tenantId: string;
+  };
+}
+
+/**
+ * V2 path — calls process_refund_v2 RPC after gating on:
+ *   1. Sale exists + within 30-day window OR a valid manager PIN
+ *      was supplied (verifyManagerPin returns valid:true).
+ *   2. The RPC itself enforces tenant scope, FOR UPDATE locking,
+ *      bound check, fully-refunded predicate, and the gl_entries
+ *      write. See supabase/migrations/20260506_a1_process_refund_v2_rpc.sql.
+ *
+ * This wrapper does the auth-tier validation; the RPC does the
+ * data-tier invariants. The split keeps RBAC + permission logic in
+ * application code where it can read the requirePermission +
+ * verifyManagerPin helpers + audit_logs.
+ */
+async function processRefundV2(
+  p: RpcDispatchParams,
+): Promise<{ id?: string; refundNumber?: string; error?: string }> {
+  const { admin, userId, tenantId } = p.ctx;
+
+  // Sale lookup for window check + customer details (the RPC fetches
+  // its own copy under FOR UPDATE; this read is just for the PIN
+  // gate, can be a vanilla SELECT).
+  const { data: sale } = await admin
+    .from("sales")
+    .select("id, created_at, customer_id, customer_name, customer_email")
+    .eq("id", p.originalSaleId)
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!sale) {
+    return { error: "Original sale not found" };
+  }
+
+  // PIN-required branch: sale older than 30 days.
+  const saleAgeMs = Date.now() - new Date(sale.created_at).getTime();
+  const requiresPin = saleAgeMs > REFUND_PIN_WINDOW_MS;
+  if (requiresPin) {
+    if (!p.managerPin) {
+      return {
+        error:
+          "This sale is older than 30 days. A manager PIN is required to refund it.",
+      };
+    }
+    // Look up the calling user's PIN hash (callers verify their own
+    // PIN; not someone else's). Same pattern as
+    // /settings/manager-pin/actions.ts:verifyManagerPin.
+    const { data: member } = await admin
+      .from("team_members")
+      .select("manager_pin_hash")
+      .eq("user_id", userId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (!member?.manager_pin_hash) {
+      return {
+        error:
+          "Manager PIN required, but you haven't set one yet. Set it in Settings → Profile and retry.",
+      };
+    }
+    const { verifyManagerPin } = await import("@/lib/manager-pin");
+    const ok = await verifyManagerPin(p.managerPin, member.manager_pin_hash);
+    if (!ok) {
+      return { error: "Manager PIN incorrect." };
+    }
+  }
+
+  // Idempotency-key fingerprint for the RPC. Matches the legacy
+  // path's shape so a tenant flipping the flag mid-flow doesn't
+  // duplicate.
+  const itemFingerprint = p.items
+    .map((i) => `${i.original_sale_item_id}:${i.quantity}`)
+    .sort()
+    .join(",");
+  const idempotencyKey = `${p.originalSaleId}:${p.refundMethod}:${itemFingerprint}`;
+
+  // Default refund_type if caller didn't supply: store_credit method
+  // → 'store_credit', everything else → 'full'. Legacy callers don't
+  // pass refundType.
+  const refundType =
+    p.refundType ??
+    (p.refundMethod === "store_credit" ? "store_credit" : "full");
+
+  // Map items to JSONB shape the RPC expects.
+  const itemsJsonb = p.items.map((i) => ({
+    original_sale_item_id: i.original_sale_item_id,
+    inventory_id: i.inventory_id,
+    description: i.description,
+    quantity: i.quantity,
+    unit_price: i.unit_price,
+    restock: i.restock,
+  }));
+
+  const { data, error } = await admin.rpc("process_refund_v2", {
+    p_tenant_id: tenantId,
+    p_user_id: userId,
+    p_original_sale_id: p.originalSaleId,
+    p_reason: p.reason,
+    p_refund_method: p.refundMethod,
+    p_refund_type: refundType,
+    p_items: itemsJsonb,
+    p_notes: p.notes ?? null,
+    p_gateway_ref: p.gatewayRef ?? null,
+    p_idempotency_key: idempotencyKey,
+  });
+  if (error) {
+    logger.error("[processRefundV2] RPC failed", {
+      error,
+      tenantId,
+      saleId: p.originalSaleId,
+    });
+    await flushSentry();
+    // Map common Postgres error codes to user-facing strings.
+    if (error.code === "23514") {
+      return { error: "Refund exceeds remaining refundable amount." };
+    }
+    if (error.code === "P0002") {
+      return { error: "Original sale not found." };
+    }
+    return { error: error.message ?? "Refund failed. Please retry." };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.refund_id) {
+    return { error: "Refund failed: no row returned by RPC." };
+  }
+
+  // Audit log mirrors the legacy path's `refund_create` event so
+  // /settings/activity surfaces both flag-on and flag-off refunds
+  // identically. The RPC already wrote the gl_entries row.
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: "refund_create",
+    entityType: "refund",
+    entityId: row.refund_id,
+    newData: {
+      refundNumber: row.refund_number,
+      glEntryId: row.gl_entry_id,
+      reason: p.reason,
+      refundMethod: p.refundMethod,
+      refundType,
+      originalSaleId: p.originalSaleId,
+      itemCount: p.items.length,
+      pinUsed: requiresPin,
+      flowVersion: "v2",
+    },
+  });
+
+  return { id: row.refund_id, refundNumber: row.refund_number };
+}
+
 export async function voidRefund(refundId: string): Promise<{ success?: boolean; error?: string }> {
   let ctx;
   try {

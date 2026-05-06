@@ -69,6 +69,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many refund requests. Please try again later." }, { status: 429 });
   }
 
+  // A1 dispatch (2026-05-06): when tenants.a1_money_correctness is
+  // TRUE, route through the same process_refund_v2 RPC the
+  // (app)/refunds/actions.ts processRefund flow uses. Single source
+  // of truth for tenants on the new flow — no path drift between
+  // POS and the refunds page. Falls through to the legacy in-line
+  // saga below when the flag is FALSE.
+  const { data: tenantFlag } = await admin
+    .from("tenants")
+    .select("a1_money_correctness")
+    .eq("id", tenantId)
+    .single();
+  if (tenantFlag?.a1_money_correctness === true) {
+    return await dispatchPosRefundV2({
+      admin,
+      tenantId,
+      userId,
+      saleId,
+      items: items as Array<{ saleItemId: string; quantity: number; unitPrice: number; restock?: boolean; inventoryId?: string | null }>,
+      refundMethod: refundMethod as string,
+      reason: (reason as string | undefined) ?? "",
+      notes: (notes as string | undefined) ?? null,
+      gatewayRef: (parseResult.data as { gatewayRef?: string }).gatewayRef ?? null,
+      managerPin: (parseResult.data as { managerPin?: string }).managerPin ?? null,
+    });
+  }
+
   // Check sale exists + capture total for the bound check
   const { data: sale } = await admin
     .from("sales")
@@ -383,4 +409,162 @@ export async function POST(req: NextRequest) {
 
   const r = result as { status: number; payload: Record<string, unknown> };
   return NextResponse.json(r.payload, { status: r.status });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// A1 Day 2 — process_refund_v2 dispatch for the POS path.
+// ──────────────────────────────────────────────────────────────────
+
+/** 30-day window matches the sibling `processRefundV2` in
+ *  src/app/(app)/refunds/actions.ts. Beyond this from the sale's
+ *  created_at, refund requires a manager PIN. */
+const POS_REFUND_PIN_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface DispatchPosRefundV2Args {
+  admin: ReturnType<typeof createAdminClient>;
+  tenantId: string;
+  userId: string;
+  saleId: string;
+  items: Array<{
+    saleItemId: string;
+    quantity: number;
+    unitPrice: number;
+    restock?: boolean;
+    inventoryId?: string | null;
+  }>;
+  refundMethod: string;
+  reason: string;
+  notes: string | null;
+  gatewayRef: string | null;
+  managerPin: string | null;
+}
+
+async function dispatchPosRefundV2(p: DispatchPosRefundV2Args): Promise<NextResponse> {
+  // Sale exists check + window/PIN gate. Mirrors the sibling
+  // processRefundV2 in (app)/refunds/actions.ts. Both wrappers
+  // delegate the data-tier invariants to the RPC; their only job is
+  // RBAC + PIN + idempotency-key composition.
+  const { data: sale } = await p.admin
+    .from("sales")
+    .select("id, created_at, customer_id, customer_name, customer_email")
+    .eq("id", p.saleId)
+    .eq("tenant_id", p.tenantId)
+    .maybeSingle();
+  if (!sale) {
+    return NextResponse.json({ error: "Sale not found" }, { status: 404 });
+  }
+
+  const saleAgeMs = Date.now() - new Date(sale.created_at).getTime();
+  const requiresPin = saleAgeMs > POS_REFUND_PIN_WINDOW_MS;
+  if (requiresPin) {
+    if (!p.managerPin) {
+      return NextResponse.json(
+        {
+          error:
+            "This sale is older than 30 days. A manager PIN is required to refund it.",
+        },
+        { status: 403 },
+      );
+    }
+    const { data: member } = await p.admin
+      .from("team_members")
+      .select("manager_pin_hash")
+      .eq("user_id", p.userId)
+      .eq("tenant_id", p.tenantId)
+      .maybeSingle();
+    if (!member?.manager_pin_hash) {
+      return NextResponse.json(
+        {
+          error:
+            "Manager PIN required, but you haven't set one yet. Set it in Settings → Profile and retry.",
+        },
+        { status: 403 },
+      );
+    }
+    const { verifyManagerPin } = await import("@/lib/manager-pin");
+    const ok = await verifyManagerPin(p.managerPin, member.manager_pin_hash);
+    if (!ok) {
+      return NextResponse.json(
+        { error: "Manager PIN incorrect." },
+        { status: 403 },
+      );
+    }
+  }
+
+  // Idempotency-key fingerprint. Same shape as the legacy POS path's
+  // `createPaymentFingerprint(...)` so flag-flip mid-flow doesn't
+  // duplicate.
+  const itemFingerprint = p.items
+    .map((i) => `${i.saleItemId}:${i.quantity}:${i.unitPrice}`)
+    .sort()
+    .join(",");
+  const idempotencyKey = `${p.saleId}:${p.refundMethod}:${itemFingerprint}`;
+
+  const refundType =
+    p.refundMethod === "store_credit" ? "store_credit" : "full";
+
+  // Map POS items → JSONB shape the RPC expects. POS uses
+  // `saleItemId` whereas the refunds page uses `original_sale_item_id`
+  // — re-map here so the RPC sees a single canonical shape.
+  const itemsJsonb = p.items.map((i) => ({
+    original_sale_item_id: i.saleItemId,
+    inventory_id: i.inventoryId ?? null,
+    description: "",
+    quantity: i.quantity,
+    unit_price: i.unitPrice,
+    restock: i.restock ?? false,
+  }));
+
+  const { data, error } = await p.admin.rpc("process_refund_v2", {
+    p_tenant_id: p.tenantId,
+    p_user_id: p.userId,
+    p_original_sale_id: p.saleId,
+    p_reason: p.reason,
+    p_refund_method: p.refundMethod,
+    p_refund_type: refundType,
+    p_items: itemsJsonb,
+    p_notes: p.notes,
+    p_gateway_ref: p.gatewayRef,
+    p_idempotency_key: idempotencyKey,
+  });
+  if (error) {
+    reportServerError("pos/refund:rpc.process_refund_v2", error, {
+      tenantId: p.tenantId,
+      saleId: p.saleId,
+    });
+    if (error.code === "23514") {
+      return NextResponse.json(
+        { error: "Refund exceeds remaining refundable amount." },
+        { status: 400 },
+      );
+    }
+    if (error.code === "P0002") {
+      return NextResponse.json(
+        { error: "Original sale not found." },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json(
+      { error: error.message ?? "Refund failed. Please retry." },
+      { status: 500 },
+    );
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.refund_id) {
+    return NextResponse.json(
+      { error: "Refund failed: no row returned by RPC." },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json(
+    {
+      refundId: row.refund_id,
+      refundNumber: row.refund_number,
+      glEntryId: row.gl_entry_id,
+      flowVersion: "v2",
+    },
+    { status: 200 },
+  );
 }
