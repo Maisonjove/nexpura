@@ -39,6 +39,7 @@ import {
   type PrecomputedRow,
   type LiveTaskRow,
 } from "@/app/(app)/dashboard/_stats-hydrate";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 import { ServerTiming } from "@/lib/server-timing";
 
 const PRECOMPUTED_MAX_STALE_MS = 60 * 1000;
@@ -103,6 +104,29 @@ export async function GET(req: NextRequest) {
     locationIdsParam.split(",").filter(Boolean).length > 0;
   if (hasLocationFilter) {
     return NextResponse.json({ stale: true, reason: "location_filter" });
+  }
+
+  // Sibling to PR #203 (post-audit/widget-list-reconciliation,
+  // CONTRIBUTING.md §17.1). The precomputed `tenant_dashboard_stats`
+  // row is tenant-wide. Serving it to a location-restricted user (one
+  // with a non-null `team_members.allowed_location_ids`) leaks
+  // aggregates from locations they can't access — exactly the
+  // widget-vs-list scope-bypass shape PR #203 closed.
+  //
+  // For restricted users we mark stale and let the SWR fetcher fall
+  // through to the server-action live path, which now applies
+  // `team_members.allowed_location_ids` via `addLocFilter`'s OR-NULL
+  // hygiene. The `addLocFilter`-side fix in
+  // src/app/(app)/dashboard/actions.ts is the canonical owner of the
+  // scope rule; this handler defers to it by refusing to short-circuit.
+  const scope = await timing.measure("scope_resolve", () =>
+    resolveReadLocationScope(user.id, tenantId),
+  );
+  if (!scope.all) {
+    return NextResponse.json(
+      { stale: true, reason: "location_restricted" },
+      { headers: serverTimingHeader(timing) },
+    );
   }
 
   const { data: row, error } = await timing.measure("precomputed_read", async () =>

@@ -16,6 +16,7 @@ import {
   type PrecomputedRow,
   type LiveTaskRow,
 } from "./_stats-hydrate";
+import { resolveReadLocationScope } from "@/lib/location-read-scope";
 import logger from "@/lib/logger";
 
 // ────────────────────────────────────────────────────────────────
@@ -182,22 +183,63 @@ export async function getDashboardStats(locationIds: string[] | null): Promise<D
   const auth = await requireAuth();
   const { userId, tenantId, isManager } = auth;
 
-  // Fast path: use the precomputed `tenant_dashboard_stats` row when
-  //   (a) we're not filtering by a specific subset of locations (the
-  //       precomputed row is tenant-wide), and
-  //   (b) the row is fresh (< 60 s old).
-  // Falls back to the live-query path otherwise.
-  if (!locationIds || locationIds.length === 0) {
+  // Sibling fix to PR #203 (post-audit/widget-list-reconciliation,
+  // CONTRIBUTING.md §17.1). Pre-fix: addLocFilter only honoured the
+  // user-explicit location picker (`locationIds` arg). A
+  // location-restricted team member with `allowed_location_ids =
+  // ['locA']` whose picker was "all" silently saw tenant-wide totals
+  // — same scope-bypass shape PR #203 fixed for sales/customers/repairs.
+  //
+  // Post-fix: we resolve `team_members.allowed_location_ids` here and
+  // intersect with the user-explicit picker. The result (`effectiveIds`
+  // + `allAccess`) flows through to `fetchDashboardStats` so the
+  // helper-side `addLocFilter` applies the C-02 OR-NULL hygiene
+  // (`location_id.in.(...) | location_id.is.null`) on every widget
+  // query in lockstep.
+  const scope = await resolveReadLocationScope(userId, tenantId);
+
+  // Compute the effective location set the dashboard should respect.
+  //   - allAccess (owner/manager OR allowed_location_ids = null):
+  //       picker passes through unchanged.
+  //   - restricted: intersect picker with allowedIds. If picker
+  //       includes IDs the user can't access, drop them; if picker is
+  //       null/empty, scope to the user's allowed set.
+  let effectiveIds: string[] | null;
+  if (scope.all) {
+    effectiveIds = locationIds && locationIds.length > 0 ? locationIds : null;
+  } else if (scope.allowedIds.length === 0) {
+    // Zero-allow user — match nothing.
+    effectiveIds = [];
+  } else if (!locationIds || locationIds.length === 0) {
+    effectiveIds = scope.allowedIds;
+  } else {
+    const allowedSet = new Set(scope.allowedIds);
+    effectiveIds = locationIds.filter((id) => allowedSet.has(id));
+    if (effectiveIds.length === 0) effectiveIds = []; // post-intersection no-overlap → match nothing
+  }
+
+  // Fast path: use the precomputed `tenant_dashboard_stats` row only
+  // when the caller is all-access AND the picker is "all". The
+  // precomputed row is tenant-wide, so consuming it for a
+  // location-restricted user would re-introduce the leak we just
+  // closed (this mirrors /repairs/page.tsx's
+  // `locationFilter ? Promise.resolve({data: null}) : statsPromise`
+  // pattern from PR #203).
+  if (scope.all && (!locationIds || locationIds.length === 0)) {
     const precomputed = await readPrecomputedStats(userId, tenantId, isManager);
     if (precomputed) return precomputed;
   }
 
-  const locationKey = locationIds?.sort().join(",") || "all";
+  const locationKey = effectiveIds === null
+    ? "all"
+    : effectiveIds.length === 0
+      ? "none"
+      : [...effectiveIds].sort().join(",");
   const cacheKey = tenantCacheKey(tenantId, "dashboard-stats", `${locationKey}:${userId}`);
 
   return coalesceRequest(cacheKey, () => getCached(
     cacheKey,
-    async () => fetchDashboardStats(userId, tenantId, isManager, locationIds),
+    async () => fetchDashboardStats(userId, tenantId, isManager, effectiveIds),
     300 // 5 minute cache — stats are a snapshot; absolute freshness not required
   ));
 }
@@ -365,15 +407,33 @@ async function fetchDashboardStats(
     }
   }
 
-  // Helper to add location filter
+  // Helper to add location filter — sibling fix to PR #203
+  // (CONTRIBUTING.md §17.1). Pre-fix: this honoured ONLY the
+  // user-explicit picker (`locationIds`), so a location-restricted
+  // team member whose picker was "all" saw tenant-wide widgets.
+  //
+  // Post-fix: `locationIds` here is the already-intersected
+  // effective set computed by `getDashboardStats` (picker ∩
+  // team_members.allowed_location_ids). We apply OR-NULL hygiene
+  // (C-02 fix) so legacy rows with `location_id IS NULL` remain
+  // visible to the restricted user — same shape as
+  // `locationScopeFilter` in /sales, /repairs, /inventory.
+  //
+  // Special case: empty array means "no overlap" (picker
+  // intersected to nothing) and must match zero rows. We use the
+  // impossible-UUID pattern from `locationScopeFilter` for
+  // symmetric "match nothing" semantics across the codebase.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const addLocFilter = <T extends any>(q: T): T => {
-    if (!locationIds || locationIds.length === 0) return q;
+    if (locationIds === null) return q;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query = q as any;
-    return locationIds.length === 1 
-      ? query.eq("location_id", locationIds[0]) 
-      : query.in("location_id", locationIds);
+    if (locationIds.length === 0) {
+      return query.eq("location_id", "00000000-0000-0000-0000-000000000000");
+    }
+    return query.or(
+      `location_id.in.(${locationIds.join(",")}),location_id.is.null`,
+    );
   };
 
   // ── Parallel fetch — all queries at once ─────────────────────

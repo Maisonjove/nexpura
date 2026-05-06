@@ -1340,3 +1340,131 @@ boolean return CAN be correct in scripts that don't have a dry-run
 mode at all. ESLint can't reliably distinguish. Manual checklist
 (above) + unit-test discipline are the gates. If this bug class
 recurs despite the checklist, revisit.
+
+## §17.1.1 — Dashboard scope parity (sibling to PR #203)
+
+Sibling fix to §17.1. The dashboard widget path
+(`src/app/(app)/dashboard/actions.ts`) had the same scope-bypass
+shape PR #203 closed for /sales, /customers, /repairs:
+
+  - The in-file `addLocFilter` helper honoured ONLY the user-explicit
+    picker (the `locationIds` arg flowing in from
+    `getFilterLocationIds()` in `DashboardWrapper.tsx`).
+  - It never read `team_members.allowed_location_ids`, so a restricted
+    team member whose picker was "all" saw tenant-wide widgets.
+  - Both compounding paths leaked: the precomputed
+    `tenant_dashboard_stats` fast-path (in `readPrecomputedStats`
+    AND in `/api/dashboard/stats/route.ts`) AND the live-query
+    `fetchDashboardStats` path.
+
+### Canonical scope — picker ∩ allowed_location_ids
+
+The dashboard accepts a user-explicit picker. The picker is intersected
+with `team_members.allowed_location_ids` (the same source-of-truth
+`getUserLocationIds` reads for /sales, /repairs, /inventory). The
+intersection is the "effective" set the widget queries see.
+
+  - **all-access** (owner/manager OR `allowed_location_ids` = null):
+    picker passes through unchanged.
+  - **restricted, picker = "all"**: scope to `allowedIds`.
+  - **restricted, picker selects subset**: drop any picker IDs outside
+    `allowedIds`; if no overlap, "match nothing" via the
+    impossible-UUID pattern (symmetric with `locationScopeFilter`).
+
+### Precomputed fast path
+
+The precomputed `tenant_dashboard_stats` row is tenant-wide.
+Consuming it for a location-restricted user is a leak. The fast path
+is gated on `scope.all` in both `readPrecomputedStats`
+(server-action) AND the `/api/dashboard/stats` Route Handler.
+Restricted users always go through the live `fetchDashboardStats`
+path so `addLocFilter` applies the OR-NULL hygiene.
+
+### Callsites covered (§17.1 list extension)
+
+  - `src/app/(app)/dashboard/actions.ts` — `getDashboardStats`,
+    `readPrecomputedStats`, `fetchDashboardStats` + `addLocFilter`.
+  - `src/app/api/dashboard/stats/route.ts` — the SWR-targeted Route
+    Handler twin.
+
+### Contract test
+
+`src/lib/__tests__/dashboard-loc-filter-contract.test.ts` — 9
+source-grep assertions pinning the helper imports, intersection
+logic, OR-NULL hygiene, impossible-UUID match-nothing, and the
+precomputed-skip on both fast-path callers.
+
+## 19. Migration application discipline
+
+Migrations may apply via supabase CLI OR direct Mgmt API SQL run OR
+dashboard UI. The `supabase_migrations.schema_migrations` ledger only
+tracks CLI-applied migrations — Mgmt API and dashboard applications
+bypass it. As a result, that table is NOT a reliable source of truth
+for "is this migration applied?" The 2026-05-06 audit found
+`20260322` as the latest ledger entry while 80+ subsequent migrations
+were clearly applied to prod (refunds table existed,
+`manager_pin_hash` column existed, `cost_at_sale` column existed).
+
+### Real source of truth — prod schema introspection
+
+| Effect type | Catalog query |
+|---|---|
+| Table exists | `information_schema.tables WHERE table_name='X'` |
+| Column exists | `information_schema.columns WHERE table_name='X' AND column_name='Y'` |
+| Trigger exists | `pg_trigger WHERE tgname='X'` |
+| Function defined | `pg_proc WHERE proname='X'` |
+| Constraint present | `pg_constraint WHERE conname='X'` |
+| Index present | `pg_indexes WHERE indexname='X'` |
+
+### Required practice (until structural fix lands)
+
+1. Before claiming a migration applied: query prod for the actual
+   effect markers — at minimum one per non-trivial change in the
+   migration file.
+2. Document the verification probe in the PR description.
+3. After applying via Mgmt API: surface the introspection query
+   result as evidence in the PR.
+
+### Pre-merge checklist for any PR adding a migration file
+
+Operationalises the discipline above. Same pattern as §10 deployment-
+audit checklist. Tick each box in the PR description:
+
+1. [ ] Migration file written and reviewed.
+2. [ ] Migration applied via Mgmt API SQL run (or supabase CLI when
+       adopted).
+3. [ ] Prod schema introspection probe documented in the PR
+       description (query + expected markers).
+4. [ ] Effect markers verified present in prod (table / column /
+       trigger / function / constraint — paste the SELECT result).
+5. [ ] PR description states "Migration applied to prod at
+       `<timestamp>` via `<method>`."
+6. [ ] Audit log entry written (`action='migration_applied'`,
+       metadata captures file path + method + verification result).
+
+### Cross-references — incidents that surfaced this pattern
+
+- **PR #160 C-05** — `20260505_activity_log_triggers.sql` committed
+  but not applied; Desktop-Opus retest exposed it 2 weeks later.
+  Repaired audit log: see action `auth_config_update` /
+  `partial_migration_repair` succession in `audit_logs`.
+- **`20260404_edge_case_protections.sql`** — committed and partially
+  applied; idempotency UNIQUE constraints + `processing_started_at`
+  column + `clean_old_idempotency_keys` fn missing for ~33 days until
+  the 2026-05-06 audit. Repair audit log:
+  `aa71bc0f-934d-4b10-af70-c5df93a2d928` action
+  `partial_migration_repair`.
+
+### Future structural fix (queued post-engagement)
+
+Two viable paths, pick one:
+
+- **(a)** Adopt supabase CLI as the canonical migration path with a
+  CI step that fails the PR if `schema_migrations` doesn't include
+  every repo-present migration file at PR-tip.
+- **(b)** Build a Mgmt-API-driven CI gate that scans migration files
+  + verifies the declared effect markers in prod schema before
+  allowing merge. (More work but doesn't disrupt the existing Mgmt
+  API workflow.)
+
+Until either lands, the checklist above is the manual gate.
