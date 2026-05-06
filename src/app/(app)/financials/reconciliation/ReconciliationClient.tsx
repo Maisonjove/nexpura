@@ -23,6 +23,11 @@ interface Props {
   fromIso: string;
   toIso: string;
   tenantName: string;
+  /** Cluster-PR item 8 (R5-F4): server-side warning when the user
+   *  supplied an invalid / out-of-range ?from / ?to query param.
+   *  Surfaced in a yellow banner so the user knows their input was
+   *  rejected and the page is showing the default range. */
+  dateWarning: string | null;
 }
 
 function isoToDateInput(iso: string): string {
@@ -38,20 +43,50 @@ function fmtMoney(n: number): string {
   }).format(n);
 }
 
+// Cluster-PR item 8: HTML <input type=date> ceiling.
+// Year must fit a 4-digit pad — pinning max here means the native
+// picker's UI won't produce 52026-05-01 even on the triple-click +
+// retype Desktop-Opus reproduced. Server-side parseDateOrFallback in
+// page.tsx is still the source of truth for direct URL manipulation.
+const MAX_DATE_INPUT = "9999-12-31";
+const MIN_DATE_INPUT = "0001-01-01";
+
+function isInvalidDateInput(s: string): boolean {
+  // Empty is valid (means "use default"); non-empty must match strict
+  // YYYY-MM-DD with year in [1, 9999].
+  if (!s) return false;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return true;
+  const y = parseInt(m[1], 10);
+  return y < 1 || y > 9999;
+}
+
 export default function ReconciliationClient({
   totals,
   rows,
   fromIso,
   toIso,
   tenantName,
+  dateWarning,
 }: Props) {
   const router = useRouter();
   const sp = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [from, setFrom] = useState(isoToDateInput(fromIso));
   const [to, setTo] = useState(isoToDateInput(toIso));
+  const [clientWarning, setClientWarning] = useState<string | null>(null);
 
   function applyRange() {
+    // Client-side guard mirroring the server-side check in page.tsx.
+    // Catches the 5-digit-year case before the request leaves the
+    // browser so the user sees a banner instead of a silent fallback.
+    if (isInvalidDateInput(from) || isInvalidDateInput(to)) {
+      setClientWarning(
+        "One of the dates is malformed (year must be 1-9999). Fix and try again.",
+      );
+      return;
+    }
+    setClientWarning(null);
     const next = new URLSearchParams(sp.toString());
     next.set("from", from);
     next.set("to", to);
@@ -72,6 +107,12 @@ export default function ReconciliationClient({
         </p>
       </header>
 
+      {(dateWarning || clientWarning) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
+          <strong>Date range warning:</strong> {clientWarning ?? dateWarning}
+        </div>
+      )}
+
       <div className="bg-white border border-stone-200 rounded-lg p-4 mb-6 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-stone-600">From</span>
@@ -79,6 +120,8 @@ export default function ReconciliationClient({
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
+            min={MIN_DATE_INPUT}
+            max={MAX_DATE_INPUT}
             className="border border-stone-300 rounded px-3 py-1.5"
             disabled={isPending}
           />
@@ -89,6 +132,8 @@ export default function ReconciliationClient({
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
+            min={MIN_DATE_INPUT}
+            max={MAX_DATE_INPUT}
             className="border border-stone-300 rounded px-3 py-1.5"
             disabled={isPending}
           />
@@ -112,7 +157,7 @@ export default function ReconciliationClient({
       >
         <strong>{allMatch ? "All checks pass." : "Deltas detected."}</strong>{" "}
         {allMatch
-          ? "The 4 reconciliation invariants hold for this date range."
+          ? `All ${rows.length} reconciliation invariants hold for this date range.`
           : `${rows.filter((r) => !r.isMatch).length} of ${rows.length} checks have non-zero deltas. Investigate the rows below.`}
       </div>
 
