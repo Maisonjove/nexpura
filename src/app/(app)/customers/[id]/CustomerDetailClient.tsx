@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { archiveCustomer, addCustomerNote, removeFromWishlist, notifyWishlistItem, sendCustomerEmail } from "../actions";
@@ -197,6 +197,12 @@ export default function CustomerDetailClient({
   const [newNote, setNewNote] = useState("");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [notes, setNotes] = useState(customer.notes || "");
+  // L-03 (retest): autosave the in-progress note. Debounces on idle and
+  // commits via the same addCustomerNote path the manual button uses.
+  // The textarea clears on success so a single edit produces a single
+  // timestamped entry, matching the manual flow.
+  const [noteSaveState, setNoteSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const noteAutosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openComm, setOpenComm] = useState<CustomerCommunication | null>(null);
 
   // M-06: 1:1 email send modal state.
@@ -245,19 +251,65 @@ export default function CustomerDetailClient({
     });
   }
 
-  async function handleAddNote(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newNote.trim()) return;
+  async function commitNote(text: string): Promise<boolean> {
+    const trimmed = text.trim();
+    if (!trimmed) return false;
     setNoteSubmitting(true);
-    const result = await addCustomerNote(customer.id, newNote.trim());
+    setNoteSaveState("saving");
+    const result = await addCustomerNote(customer.id, trimmed);
     if (result.success) {
       const timestamp = new Date().toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
-      const formattedNote = `[${timestamp}] ${newNote.trim()}`;
+      const formattedNote = `[${timestamp}] ${trimmed}`;
       setNotes((prev) => (prev ? `${prev}\n\n${formattedNote}` : formattedNote));
       setNewNote("");
+      setNoteSaveState("saved");
+      setNoteSubmitting(false);
+      return true;
     }
+    setNoteSaveState("error");
     setNoteSubmitting(false);
+    return false;
   }
+
+  async function handleAddNote(e: React.FormEvent) {
+    e.preventDefault();
+    // Manual submit — short-circuit any in-flight debounce so we don't
+    // double-save the same note text.
+    if (noteAutosaveTimer.current) {
+      clearTimeout(noteAutosaveTimer.current);
+      noteAutosaveTimer.current = null;
+    }
+    await commitNote(newNote);
+  }
+
+  // L-03 (retest): debounced autosave. After 1.5s of typing-idle with
+  // non-empty text, commit. We deliberately do NOT autosave on every
+  // keystroke — addCustomerNote appends a timestamped entry, and one
+  // edit should produce one entry.
+  useEffect(() => {
+    if (noteAutosaveTimer.current) {
+      clearTimeout(noteAutosaveTimer.current);
+      noteAutosaveTimer.current = null;
+    }
+    if (!newNote.trim() || readOnly) {
+      if (noteSaveState !== "idle" && !newNote.trim()) setNoteSaveState("idle");
+      return;
+    }
+    setNoteSaveState("idle");
+    noteAutosaveTimer.current = setTimeout(() => {
+      void commitNote(newNote);
+    }, 1500);
+    return () => {
+      if (noteAutosaveTimer.current) {
+        clearTimeout(noteAutosaveTimer.current);
+        noteAutosaveTimer.current = null;
+      }
+    };
+    // commitNote captures customer.id which is stable for this view; we
+    // intentionally only depend on newNote so re-renders don't reset the
+    // timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newNote, readOnly]);
 
   return (
     <div className="max-w-5xl mx-auto py-10 px-4 space-y-6">
@@ -982,17 +1034,34 @@ export default function CustomerDetailClient({
           <div className="space-y-4">
             {!readOnly && (
               <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-stone-900 mb-4">Add Private Note</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-stone-900">Add Private Note</h3>
+                  <span
+                    aria-live="polite"
+                    className={`text-xs ${
+                      noteSaveState === "saved"
+                        ? "text-emerald-600"
+                        : noteSaveState === "error"
+                          ? "text-red-600"
+                          : "text-stone-400"
+                    }`}
+                  >
+                    {noteSaveState === "saving" && "Saving…"}
+                    {noteSaveState === "saved" && "Saved"}
+                    {noteSaveState === "error" && "Save failed — try the button below"}
+                    {noteSaveState === "idle" && newNote.trim() && "Autosaves on idle"}
+                  </span>
+                </div>
                 <form onSubmit={handleAddNote} className="space-y-4">
                   <textarea
                     value={newNote}
                     onChange={e => setNewNote(e.target.value)}
-                    placeholder="Type a note about this customer..."
+                    placeholder="Type a note about this customer... (autosaves)"
                     className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze resize-none text-sm"
                   />
                   <div className="flex justify-end">
                     <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-nexpura-charcoal text-white rounded-xl font-bold disabled:opacity-50 text-sm">
-                      Save Note
+                      {noteSubmitting ? "Saving…" : "Save now"}
                     </button>
                   </div>
                 </form>
