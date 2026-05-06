@@ -139,12 +139,16 @@ async function checkSubscriptionAndRedirect(
 
 // Known app route segments â used to detect /{slug}/{route} tenant-aware URLs.
 // If the second segment is a known app route and the first is NOT, it's a tenant slug path.
+// R6-F5 (item 14): keep "digital" in lockstep with TENANT_APP_ROUTES
+// in src/lib/supabase/middleware.ts and APP_ROUTES in
+// src/lib/app-routes.ts — all three are the route-recognition list and
+// any new top-level app route has to land in all three.
 const EXEMPT_TENANT_ROUTES = new Set([
   "dashboard", "intake", "pos", "sales", "invoices", "quotes", "laybys",
   "inventory", "customers", "suppliers", "memo", "stocktakes",
   "repairs", "bespoke", "workshop", "appraisals", "passports",
   "expenses", "financials", "reports", "refunds", "vouchers", "eod",
-  "marketing", "tasks", "copilot", "website", "documents",
+  "marketing", "tasks", "copilot", "website", "digital", "documents",
   "integrations", "reminders", "support", "settings", "billing",
   "suspended", "communications", "notifications", "migration", "ai",
   "enquiries", "print-queue", "actions", "verification",

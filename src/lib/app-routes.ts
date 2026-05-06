@@ -42,6 +42,15 @@ export const APP_ROUTES: ReadonlySet<string> = new Set([
   "tasks",
   "copilot",
   "website",
+  // R6-F5 (item 14): /digital is the hub page for website/integrations/
+  // passports surfaces. Must be a known route segment so TopNav doesn't
+  // treat it as a tenant slug and so middleware's parseTenantSlugPath
+  // recognises /{slug}/digital and rewrites it to /digital. Three sets
+  // of routes have to stay in sync — see TENANT_APP_ROUTES in
+  // src/lib/supabase/middleware.ts and EXEMPT_TENANT_ROUTES in
+  // /middleware.ts. Without all three knowing about "digital" the link
+  // 404s.
+  "digital",
   "documents",
   "integrations",
   "reminders",
