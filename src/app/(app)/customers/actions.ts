@@ -458,6 +458,30 @@ export async function addCustomerNote(
       .eq("tenant_id", tenantId);
 
     if (error) return { error: error.message };
+
+    // R6-F11 (item 15): emit a customer_update audit event so the
+    // per-entity history page (/customers/[id]/history) — which
+    // filters audit_logs WHERE entity_type='customer' AND
+    // entity_id=$id — picks up note saves. Pre-fix the page was empty
+    // immediately after a note save: createCustomer/updateCustomer/
+    // archiveCustomer all log, but addCustomerNote silently skipped.
+    // We surface the new note line as `newData.note` (NOT the full
+    // resealed bundle — old_data is intentionally null because the
+    // entire pre-state is encrypted PII and we don't want it
+    // round-tripped into audit_logs in plaintext). The
+    // entity_type/entity_id pair matches the history page's filter
+    // exactly and the cluster PR's singular-entity_type contract.
+    after(() =>
+      logAuditEvent({
+        tenantId,
+        action: "customer_update",
+        entityType: "customer",
+        entityId: customerId,
+        newData: { note: newNote },
+        metadata: { source: "addCustomerNote" },
+      })
+    );
+
     revalidatePath(`/customers/${customerId}`);
     return { success: true };
   } catch (error) {
