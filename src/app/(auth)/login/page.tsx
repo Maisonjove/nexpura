@@ -15,6 +15,17 @@ function LoginPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [showExpiredMessage, setShowExpiredMessage] = useState(false);
 
+  // Bug C partial — invite-context banner (2026-05-06).
+  // When a pre-existing user clicks an invite link, the invite-accept
+  // shadow-signup flow detects the existing auth.users row and bounces
+  // them to /login?redirectTo=/invite/{token}. Pre-fix: blank login
+  // page, no context. Fix: when redirectTo starts with /invite/, render
+  // an amber "this email is already registered, sign in here" banner +
+  // bold the Forgot password? link so the recovery path is visible.
+  // Standard non-invite path: no banner, no styling change.
+  const redirectTo = searchParams.get("redirectTo") ?? "";
+  const isInviteRedirect = redirectTo.startsWith("/invite/");
+
   // NOTE: We intentionally do NOT `router.prefetch("/dashboard")` here.
   // On mount the user is unauthenticated, so middleware responds with a
   // 307 redirect to /login — and Next.js caches *that* redirect in the
@@ -143,6 +154,23 @@ function LoginPageContent() {
       </div>
 
       <div className="bg-m-white-soft rounded-[18px] border border-m-border-soft p-8 sm:p-10 w-full shadow-[0_18px_45px_rgba(0,0,0,0.06)]">
+        {/* Bug C banner — invite-redirect context. Predicate: redirectTo
+            starts with "/invite/" — i.e. a pre-existing-user shadow-signup
+            bounce. Style mirrors session-expired below. */}
+        {isInviteRedirect && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-amber-800">This email is already registered</p>
+                <p className="text-sm text-amber-700 mt-1">Sign in here to accept the invitation.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Session expired message */}
         {showExpiredMessage && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
@@ -225,7 +253,17 @@ function LoginPageContent() {
               />
               <span className="text-[14px] text-m-text-secondary">Remember me</span>
             </label>
-            <Link href="/forgot-password" className="text-[14px] text-m-charcoal hover:opacity-70 transition-opacity">
+            {/* Bug C partial — when in the invite-redirect flow, bold +
+                amber the Forgot password? link so the recovery path is
+                visually obvious for users who don't remember their password. */}
+            <Link
+              href="/forgot-password"
+              className={
+                isInviteRedirect
+                  ? "text-[14px] font-medium text-amber-700 hover:opacity-70 transition-opacity"
+                  : "text-[14px] text-m-charcoal hover:opacity-70 transition-opacity"
+              }
+            >
               Forgot password?
             </Link>
           </div>
