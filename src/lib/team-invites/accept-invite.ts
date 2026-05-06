@@ -83,7 +83,8 @@ export async function acceptInvite(
   // distinction in audit_logs.metadata. The helper itself does not
   // emit; callers are responsible for audit emission (api_route via
   // withAuditLog wrapper; server_gate via direct admin insert).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Prefix with underscore to satisfy unused-imports/no-unused-vars
+  // (vars matching /^_/u are intentional unused).
   _acceptedVia: AcceptedVia,
 ): Promise<AcceptInviteResult> {
   const mappedRole = invite.role === "technician" ? "staff" : invite.role;
