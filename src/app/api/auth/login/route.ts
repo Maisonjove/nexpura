@@ -136,6 +136,11 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       // leak account-existence any more than the signup flow does).
       const code = (error as { code?: string } | null)?.code ?? "";
       const msg = error?.message ?? "";
+
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[login] Supabase auth failed:", { code, msg, email: normalizedEmail });
+      }
+
       if (code === "email_not_confirmed" || /email.*confirm/i.test(msg)) {
         return NextResponse.json(
           { error: "Please verify your email — check your inbox for the confirmation link.", code: "email_not_confirmed" },
@@ -148,7 +153,7 @@ export const POST = withSentryFlush(async (request: NextRequest) => {
       // "Those details don't match — please check your email and
       // password and try again." copy from this single error string.
       return NextResponse.json(
-        { error: "Invalid email or password" },
+        { error: "Invalid email or password", ...(process.env.NODE_ENV !== "production" && { _dev: msg || "No message from Supabase" }) },
         { status: 401 },
       );
     }
