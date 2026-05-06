@@ -156,12 +156,17 @@ async function handleInviteAccept(request: NextRequest): Promise<NextResponse> {
     }
 
     // Update the users table with tenant_id and role
+    // Map technician → staff at the users.role layer per Phase A scope.
+    // `users.role` CHECK constraint allows ['owner', 'manager', 'staff'] only;
+    // 'technician' is a team_members.role concept (job designation), not a
+    // permissions tier. team_members.role stays 'technician' for filtering
+    // (e.g., RepairsKanban "Assigned Technician") — only users.role maps.
     const { error: userError } = await admin
       .from("users")
       .upsert({
         id: userId,
         tenant_id: invite.tenant_id,
-        role: invite.role,
+        role: invite.role === 'technician' ? 'staff' : invite.role,
         full_name: invite.name,
         email: invite.email,
       }, { onConflict: "id" });
