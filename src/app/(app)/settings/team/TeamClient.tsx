@@ -23,8 +23,13 @@ interface TeamMember {
   name: string;
   email: string;
   role: string;
-  department: string | null;
-  last_login_at: string | null;
+  // R6-F2 (item 13): both fields are optional — neither column exists
+  // on `team_members` yet. The UI tolerates `null`/missing and renders
+  // "—". The page-level SELECT no longer asks for them; keeping the
+  // optional shape here means we can re-introduce them later without
+  // another type churn when the columns land.
+  department?: string | null;
+  last_login_at?: string | null;
   invite_accepted: boolean;
   invite_expires_at: string | null;
   created_at: string;
