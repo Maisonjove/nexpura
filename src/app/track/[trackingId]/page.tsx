@@ -262,7 +262,7 @@ async function TrackingPage({ params }: PageProps) {
 function TrackOrderNotFound({ trackingId }: { trackingId: string }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F6F3EE] to-white flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-10 max-w-md w-full text-center">
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-10 max-w-md w-full text-center">
         <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z" />

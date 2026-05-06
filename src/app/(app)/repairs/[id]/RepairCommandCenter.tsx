@@ -424,8 +424,8 @@ export default function RepairCommandCenter({
           <ItemRepairCard repair={repair} />
 
           {/* 3. Work Required Card */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Work Required</h2>
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+            <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-3">Work Required</h2>
             
             {/* Work Description */}
             {repair.work_description ? (
@@ -495,11 +495,11 @@ export default function RepairCommandCenter({
           />
 
           {/* 5. Pricing & Payment Card */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Pricing & Payment</h2>
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+            <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-4">Pricing & Payment</h2>
 
             {/* Quote Strip - 3 columns */}
-            <div className="grid grid-cols-3 gap-4 mb-5 pb-5 border-b border-stone-100">
+            <div className="grid grid-cols-3 gap-4 mb-5 pb-5 border-b border-stone-200">
               <div className="text-center">
                 <p className="text-xs text-stone-500 mb-1">Quoted</p>
                 <p className="text-lg font-semibold text-stone-900">{fmt(repair.quoted_price, currency)}</p>
@@ -523,11 +523,12 @@ export default function RepairCommandCenter({
             {invoice && invoice.lineItems.length > 0 ? (
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Line Items</p>
+                  <p className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em]">Line Items</p>
                   {(() => {
                     const label = { draft: "Draft", unpaid: "Sent", partial: "Partial", paid: "Paid", voided: "Voided", overdue: "Overdue" }[invoice.status] || invoice.status;
+                    const badgeClass = invoice.status === "paid" ? "nx-badge-success" : invoice.status === "partial" ? "nx-badge-warning" : invoice.status === "overdue" ? "nx-badge-danger" : "nx-badge-neutral";
                     return (
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : invoice.status === "partial" ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-stone-100 text-stone-600"}`}>
+                      <span className={badgeClass}>
                         {label}
                       </span>
                     );
@@ -585,14 +586,14 @@ export default function RepairCommandCenter({
             {/* Add Line Item Buttons */}
             {!readOnly && (
               <div className="flex gap-2 mb-5">
-                <button onClick={() => { setFormError(null); setShowAddManual(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
+                <button onClick={() => { setFormError(null); setShowAddManual(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-md hover:bg-stone-50 transition-colors">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Add Manual Item
                 </button>
                 {inventory.length > 0 && (
-                  <button onClick={() => { setFormError(null); setShowAddStock(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-lg hover:bg-stone-50 transition-colors">
+                  <button onClick={() => { setFormError(null); setShowAddStock(true); }} className="flex items-center gap-1.5 text-xs font-medium text-stone-600 border border-stone-200 px-3 py-2 rounded-md hover:bg-stone-50 transition-colors">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
@@ -603,21 +604,21 @@ export default function RepairCommandCenter({
             )}
 
             {/* Invoice Link / Generate */}
-            <div className="border-t border-stone-100 pt-4 mb-4">
+            <div className="border-t border-stone-200 pt-4 mb-4">
               {invoice ? (
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-stone-900">{invoice.invoice_number}</p>
                     <p className="text-xs text-stone-400 mt-0.5 capitalize">{invoice.status}</p>
                   </div>
-                  <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-amber-700 hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-lg">
+                  <Link href={`/invoices/${invoice.id}`} className="text-xs font-medium text-amber-700 hover:underline border border-amber-200 bg-amber-50 px-3 py-1.5 rounded-md">
                     View Invoice →
                   </Link>
                 </div>
               ) : !readOnly ? (
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-stone-400 flex-1">No invoice generated yet.</p>
-                  <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-nexpura-bronze text-white px-3 py-1.5 rounded-lg hover:bg-nexpura-bronze-hover transition-colors disabled:opacity-50">
+                  <button onClick={handleGenerateInvoice} disabled={isPending} className="nx-btn-primary cursor-pointer text-xs px-3 py-1.5 disabled:opacity-50">
                     Generate Invoice
                   </button>
                 </div>
@@ -628,8 +629,8 @@ export default function RepairCommandCenter({
 
             {/* Payment History */}
             {invoice && invoice.payments.length > 0 && (
-              <div className="border-t border-stone-100 pt-4">
-                <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Payment History</p>
+              <div className="border-t border-stone-200 pt-4">
+                <p className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-2">Payment History</p>
                 <div className="space-y-2">
                   {invoice.payments.map((p: Payment) => (
                     <div key={p.id} className="flex items-center justify-between text-xs">
@@ -647,8 +648,8 @@ export default function RepairCommandCenter({
           </div>
 
           {/* 6. Notes Card */}
-          <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">Notes & Activity</h2>
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+            <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-4">Notes & Activity</h2>
 
             {/* Internal Notes - Editable if not readOnly */}
             <div className="mb-4">
@@ -670,7 +671,7 @@ export default function RepairCommandCenter({
 
             {/* Intake Notes Display */}
             {repair.intake_notes && (
-              <div className="mb-4 pb-4 border-b border-stone-100">
+              <div className="mb-4 pb-4 border-b border-stone-200">
                 <label className="text-xs font-medium text-stone-500 block mb-1.5">Intake Notes</label>
                 <p className="text-sm text-stone-700 bg-stone-50 rounded-lg p-3">{repair.intake_notes}</p>
               </div>
@@ -721,8 +722,8 @@ export default function RepairCommandCenter({
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-6 py-3 flex items-center justify-between z-40">
           <span className="text-xs text-stone-400">Stage: {currentStageLabel}</span>
           <div className="flex gap-2">
-            <button onClick={() => window.print()} className="text-xs font-medium text-stone-600 border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">Print</button>
-            <button onClick={handleEmailInvoice} className="text-xs font-medium text-stone-600 border border-stone-200 px-3 py-1.5 rounded-lg hover:bg-stone-50">Email</button>
+            <button onClick={() => window.print()} className="text-xs font-medium text-stone-600 border border-stone-200 px-3 py-1.5 rounded-md hover:bg-stone-50 hover:border-stone-300 transition-colors duration-200">Print</button>
+            <button onClick={handleEmailInvoice} className="text-xs font-medium text-stone-600 border border-stone-200 px-3 py-1.5 rounded-md hover:bg-stone-50 hover:border-stone-300 transition-colors duration-200">Email</button>
           </div>
         </div>
       )}

@@ -162,7 +162,7 @@ export default function TrackingPageClient({
                 <h1 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
                   {order.tenant.business_name}
                 </h1>
-                <p className="text-xs text-stone-400 mt-0.5 font-sans tracking-wide uppercase">
+                <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-sans mt-0.5">
                   Order Tracking
                 </p>
               </div>
@@ -170,7 +170,7 @@ export default function TrackingPageClient({
 
             {/* Tracking ID */}
             <div className="text-right flex-shrink-0">
-              <p className="text-[0.6875rem] text-stone-400 uppercase tracking-widest font-sans mb-1">
+              <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-sans mb-1">
                 Tracking ID
               </p>
               <p className="font-mono text-sm font-semibold text-stone-800 bg-stone-100 px-3 py-1 rounded-lg border border-stone-200">
@@ -183,7 +183,7 @@ export default function TrackingPageClient({
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-5">
         {/* Order Summary Card */}
-        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-8">
           {/* Type badge + status */}
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
@@ -211,10 +211,10 @@ export default function TrackingPageClient({
           </p>
 
           {/* Divider */}
-          <div className="border-t border-stone-100 mt-6 pt-6">
+          <div className="border-t border-stone-200 mt-6 pt-6">
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <p className="text-[0.6875rem] text-stone-400 uppercase tracking-widest font-sans mb-1.5">
+                <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-sans mb-1.5">
                   Order Date
                 </p>
                 <p className="text-sm font-medium text-stone-900">
@@ -222,7 +222,7 @@ export default function TrackingPageClient({
                 </p>
               </div>
               <div>
-                <p className="text-[0.6875rem] text-stone-400 uppercase tracking-widest font-sans mb-1.5">
+                <p className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 font-sans mb-1.5">
                   Est. Completion
                 </p>
                 <p className="text-sm font-medium text-stone-900">
@@ -236,7 +236,7 @@ export default function TrackingPageClient({
         </div>
 
         {/* Progress Tracker */}
-        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-8">
           <h3 className="font-serif text-lg text-stone-900 mb-7 tracking-tight">
             Progress
           </h3>
@@ -308,7 +308,7 @@ export default function TrackingPageClient({
 
         {/* Attachments */}
         {order.attachments.length > 0 && (
-          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-8">
             <h3 className="font-serif text-lg text-stone-900 mb-5 tracking-tight">
               Attachments
             </h3>
@@ -321,7 +321,7 @@ export default function TrackingPageClient({
                     <button
                       key={attachment.id}
                       onClick={() => setSelectedImage(attachment.file_url)}
-                      className="aspect-square rounded-xl overflow-hidden bg-stone-100 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40 focus:ring-offset-2"
+                      className="aspect-square rounded-2xl overflow-hidden bg-stone-100 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:ring-offset-2"
                     >
                       <Image
                         src={attachment.file_url}
@@ -340,7 +340,7 @@ export default function TrackingPageClient({
             {videoAttachments.length > 0 && (
               <div className="mb-4 space-y-3">
                 {videoAttachments.map((attachment) => (
-                  <div key={attachment.id} className="rounded-xl overflow-hidden bg-stone-900">
+                  <div key={attachment.id} className="rounded-2xl overflow-hidden bg-stone-900">
                     <video
                       src={attachment.file_url}
                       controls
@@ -372,7 +372,7 @@ export default function TrackingPageClient({
                     href={attachment.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-100 transition-colors"
+                    className="flex items-center gap-3 p-3.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 transition-all duration-400"
                   >
                     <span className="text-xl">{getFileIcon(attachment.file_type)}</span>
                     <div className="flex-1 min-w-0">
@@ -397,7 +397,7 @@ export default function TrackingPageClient({
 
         {/* Status History Timeline */}
         {order.status_history.length > 0 && (
-          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 sm:p-8">
             <h3 className="font-serif text-lg text-stone-900 mb-6 tracking-tight">
               Activity Timeline
             </h3>
@@ -412,7 +412,7 @@ export default function TrackingPageClient({
                       }`}
                     />
                     {index < order.status_history.length - 1 && (
-                      <div className="w-px flex-1 bg-stone-100 my-2" />
+                      <div className="w-px flex-1 bg-stone-200 my-2" />
                     )}
                   </div>
 
@@ -469,7 +469,7 @@ export default function TrackingPageClient({
             <span className="text-xs text-stone-300">Powered by</span>
             <a
               href="https://nexpura.com"
-              className="text-xs font-semibold text-stone-400 hover:text-nexpura-bronze transition-colors font-sans"
+              className="text-sm font-normal text-stone-400 hover:text-nexpura-bronze transition-colors font-serif tracking-tight"
             >
               Nexpura
             </a>

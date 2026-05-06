@@ -32,8 +32,8 @@ export default function FinancialSummary({
   const isTerminal = repair.stage === "collected";
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-      <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">
+    <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+      <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-4">
         Financial
       </h2>
       <div className="space-y-2 text-sm">
@@ -68,7 +68,7 @@ export default function FinancialSummary({
         )}
         {invoice && (
           <>
-            <hr className="border-stone-100 my-2" />
+            <hr className="border-stone-200 my-2" />
             <div className="flex justify-between">
               <span className="text-stone-500">Subtotal</span>
               <span className="font-medium text-stone-900">
@@ -85,7 +85,7 @@ export default function FinancialSummary({
                 </span>
               </div>
             )}
-            <div className="flex justify-between pt-1 border-t border-stone-100">
+            <div className="flex justify-between pt-1 border-t border-stone-200">
               <span className="text-stone-900 font-semibold">Total</span>
               <span className="font-bold text-stone-900">
                 {fmt(invoice.total, currency)}
@@ -114,7 +114,7 @@ export default function FinancialSummary({
             balanceDue > 0 && (
               <button
                 onClick={onRecordPayment}
-                className="w-full py-2.5 bg-nexpura-bronze text-white text-sm font-semibold rounded-lg hover:bg-nexpura-bronze-hover transition-colors"
+                className="w-full nx-btn-primary cursor-pointer"
               >
                 Record Payment
               </button>
@@ -123,7 +123,7 @@ export default function FinancialSummary({
             <button
               onClick={onGenerateInvoice}
               disabled={isPending}
-              className="w-full py-2.5 bg-nexpura-bronze text-white text-sm font-semibold rounded-lg hover:bg-nexpura-bronze-hover transition-colors disabled:opacity-50"
+              className="w-full nx-btn-primary cursor-pointer disabled:opacity-50"
             >
               Generate Invoice
             </button>
@@ -142,8 +142,8 @@ export default function FinancialSummary({
 
       {/* Payment history */}
       {invoice && invoice.payments.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-stone-100">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">
+        <div className="mt-4 pt-4 border-t border-stone-200">
+          <p className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-2">
             Payments
           </p>
           <div className="space-y-1.5">

@@ -28,8 +28,8 @@ export default function StageChangeModal({
           Move to <span className="font-semibold text-stone-900">{REPAIR_STAGES.find(s => s.key === targetStage)?.label ?? targetStage}</span>?
         </p>
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-          <button onClick={onConfirm} disabled={isPending} className="flex-1 bg-nexpura-bronze text-white text-sm font-medium py-2.5 rounded-lg hover:bg-nexpura-bronze-hover disabled:opacity-50">
+          <button onClick={onClose} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-md hover:bg-stone-50">Cancel</button>
+          <button onClick={onConfirm} disabled={isPending} className="flex-1 nx-btn-primary cursor-pointer disabled:opacity-50">
             {isPending ? "Updating…" : "Confirm"}
           </button>
         </div>

@@ -18,12 +18,12 @@ export default function StageTimeline({
   const currentStageIndex = REPAIR_STAGES.findIndex((s) => s.key === currentStage);
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-      <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-4">
+    <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+      <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-4">
         Stage Timeline
       </h2>
       <div className="relative">
-        <div className="absolute left-3.5 top-4 bottom-4 w-0.5 bg-stone-100" />
+        <div className="absolute left-3.5 top-4 bottom-4 w-0.5 bg-stone-200" />
         <div className="space-y-1">
           {REPAIR_STAGES.map((s, idx) => {
             const isPast = idx < currentStageIndex;
@@ -33,7 +33,7 @@ export default function StageTimeline({
               <div
                 key={s.key}
                 className={`flex items-center gap-3 px-2 py-2.5 rounded-lg relative transition-colors ${
-                  isClickable ? "cursor-pointer hover:bg-stone-50" : ""
+                  isClickable ? "cursor-pointer hover:bg-stone-50 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : ""
                 } ${isCurrent ? "bg-stone-50" : ""}`}
                 onClick={isClickable ? () => onStageChange(s.key) : undefined}
               >
@@ -43,7 +43,7 @@ export default function StageTimeline({
                       ? "bg-nexpura-bronze"
                       : isCurrent
                       ? "bg-nexpura-bronze ring-4 ring-stone-200"
-                      : "bg-white border-2 border-stone-200"
+                      : "bg-white border-2 border-stone-300"
                   }`}
                 >
                   {isPast && (

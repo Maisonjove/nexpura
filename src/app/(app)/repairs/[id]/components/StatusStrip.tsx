@@ -24,38 +24,18 @@ function fmt(n: number | null | undefined, currency: string) {
 
 function StatusChip({ invoice, repair, currency }: { invoice: Invoice | null; repair: Repair; currency: string }) {
   if (!invoice) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
-        Unpaid
-      </span>
-    );
+    return <span className="nx-badge-neutral">Unpaid</span>;
   }
   if (invoice.amount_paid >= invoice.total && invoice.total > 0) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-        Fully Paid
-      </span>
-    );
+    return <span className="nx-badge-success">Fully Paid</span>;
   }
   if (repair.deposit_paid && invoice.amount_paid > 0 && invoice.amount_paid < invoice.total) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
-        Partially Paid ({fmt(invoice.amount_paid, currency)})
-      </span>
-    );
+    return <span className="nx-badge-warning">Partially Paid ({fmt(invoice.amount_paid, currency)})</span>;
   }
   if (repair.deposit_paid && invoice.amount_paid === 0) {
-    return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-        Deposit Paid
-      </span>
-    );
+    return <span className="nx-badge-warning">Deposit Paid</span>;
   }
-  return (
-    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
-      Unpaid
-    </span>
-  );
+  return <span className="nx-badge-neutral">Unpaid</span>;
 }
 
 export default function StatusStrip({
@@ -94,7 +74,7 @@ export default function StatusStrip({
   };
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl px-5 py-4 mb-4 shadow-sm">
+    <div className="bg-white border border-stone-200 rounded-2xl px-5 py-4 mb-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-mono text-base font-semibold text-stone-900">{repair.repair_number}</span>
         <span className="text-stone-300">·</span>
@@ -114,7 +94,7 @@ export default function StatusStrip({
           </span>
         )}
         {!readOnly && (
-          <Link href={`/repairs/${repair.id}/edit`} className="ml-auto text-xs text-stone-400 hover:text-stone-700 border border-stone-200 px-3 py-1.5 rounded-lg transition-colors">
+          <Link href={`/repairs/${repair.id}/edit`} className="ml-auto text-xs text-stone-400 hover:text-stone-700 border border-stone-200 px-3 py-1.5 rounded-md hover:border-stone-300 transition-colors duration-200">
             Edit
           </Link>
         )}

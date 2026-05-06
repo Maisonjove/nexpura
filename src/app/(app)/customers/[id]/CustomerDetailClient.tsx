@@ -269,8 +269,8 @@ export default function CustomerDetailClient({
         </Link>
         {!readOnly && (
           <div className="flex gap-3">
-            <button onClick={() => setShowArchiveModal(true)} className="px-4 py-2 text-sm font-medium border border-red-100 text-red-600 rounded-xl hover:bg-red-50 transition-colors">Archive</button>
-            <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-nexpura-bronze text-white rounded-xl hover:bg-nexpura-bronze-hover transition-colors shadow-sm">Edit Profile</Link>
+            <button onClick={() => setShowArchiveModal(true)} className="px-4 py-2 text-sm font-medium border border-red-200 text-red-600 rounded-md bg-white hover:bg-red-50 transition-colors duration-200">Archive</button>
+            <Link href={`/customers/${customer.id}/edit`} className="nx-btn-primary cursor-pointer">Edit Profile</Link>
           </div>
         )}
       </div>
@@ -352,12 +352,12 @@ export default function CustomerDetailClient({
               <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">Store Credit</p>
               <p className="text-2xl font-bold text-stone-900">{fmt(customer.store_credit || 0)}</p>
             </div>
-            <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+            <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200">
               <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Lifetime Spend</p>
               <p className="text-lg font-bold text-stone-900">{fmt(lifetimeSpend)}</p>
             </div>
             {lastVisit && (
-              <div className="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+              <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200">
                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Last Visit</p>
                 <p className="text-sm font-semibold text-stone-700">{fmtDate(lastVisit)}</p>
               </div>
@@ -372,7 +372,7 @@ export default function CustomerDetailClient({
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
               activeTab === tab ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-900"
             }`}
           >
@@ -409,7 +409,7 @@ export default function CustomerDetailClient({
         {activeTab === "Overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-3xl border border-stone-200 p-6 space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 flex items-center gap-2">❤️ Personal & Dates</h2>
+              <h2 className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 flex items-center gap-2">❤️ Personal & Dates</h2>
               <dl className="grid grid-cols-2 gap-4">
                 {[
                   ["Birthday", customer.birthday ? format(new Date(customer.birthday), "dd MMMM") : null],
@@ -425,7 +425,7 @@ export default function CustomerDetailClient({
               </dl>
             </div>
             <div className="bg-white rounded-3xl border border-stone-200 p-6 space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400 flex items-center gap-2"><Gem className="w-3.5 h-3.5" strokeWidth={1.5} /> Preferences</h2>
+              <h2 className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 flex items-center gap-2"><Gem className="w-3.5 h-3.5" strokeWidth={1.5} /> Preferences</h2>
               <dl className="grid grid-cols-2 gap-4">
                 {[
                   ["Preferred Metal", customer.preferred_metal],
@@ -443,7 +443,7 @@ export default function CustomerDetailClient({
               </dl>
             </div>
             <div className="bg-white rounded-3xl border border-stone-200 p-6 space-y-4 md:col-span-2">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-stone-400">📍 Contact</h2>
+              <h2 className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400">📍 Contact</h2>
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
                   ["Email", customer.email],
@@ -639,11 +639,11 @@ export default function CustomerDetailClient({
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-stone-700">{fmt(s.total)}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
-                          s.status === "paid" ? "bg-green-50 text-green-700" :
-                          s.status === "layby" ? "bg-amber-50 text-amber-700" :
-                          s.status === "refunded" ? "bg-red-50 text-red-600" :
-                          "bg-stone-100 text-stone-600"
+                        <span className={`capitalize ${
+                          s.status === "paid" ? "nx-badge-success" :
+                          s.status === "layby" ? "nx-badge-warning" :
+                          s.status === "refunded" ? "nx-badge-danger" :
+                          "nx-badge-neutral"
                         }`}>{s.status}</span>
                       </div>
                     </Link>
@@ -764,7 +764,7 @@ export default function CustomerDetailClient({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400">Loyalty Points</h3>
+                    <h3 className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400">Loyalty Points</h3>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -820,7 +820,7 @@ export default function CustomerDetailClient({
                 const pts = (customer as { loyalty_points?: number }).loyalty_points ?? 0;
                 const active = pts >= t.min && (t.max === null || pts <= t.max);
                 return (
-                  <div key={t.tier} className={`rounded-xl border p-4 text-center ${active ? t.color : "bg-stone-50 border-stone-200 text-stone-400"}`}>
+                  <div key={t.tier} className={`rounded-2xl border p-4 text-center ${active ? t.color : "bg-stone-50 border-stone-200 text-stone-400"}`}>
                     <p className="text-xs font-semibold mb-1">{t.tier}</p>
                     <p className="text-[10px]">{t.min}–{t.max ?? "∞"} pts</p>
                     {active && <p className="text-[10px] font-bold mt-1">Current</p>}
@@ -862,7 +862,7 @@ export default function CustomerDetailClient({
           <div className="space-y-6">
             <div className="bg-white rounded-3xl border border-stone-200 p-8 flex items-center justify-between shadow-sm">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400 mb-1">Available Balance</h3>
+                <h3 className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mb-1">Available Balance</h3>
                 <p className="text-4xl font-bold text-stone-900">{fmt(customer.store_credit || 0)}</p>
               </div>
             </div>
@@ -982,16 +982,16 @@ export default function CustomerDetailClient({
           <div className="space-y-4">
             {!readOnly && (
               <div className="bg-white rounded-3xl border border-stone-200 p-8 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-stone-900 mb-4">Add Private Note</h3>
+                <h3 className="text-[0.75rem] tracking-[0.15em] uppercase text-stone-400 mb-4">Add Private Note</h3>
                 <form onSubmit={handleAddNote} className="space-y-4">
                   <textarea
                     value={newNote}
                     onChange={e => setNewNote(e.target.value)}
                     placeholder="Type a note about this customer..."
-                    className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze resize-none text-sm"
+                    className="w-full h-32 px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 placeholder:text-stone-400 focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200 resize-none"
                   />
                   <div className="flex justify-end">
-                    <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-nexpura-bronze text-white rounded-xl font-bold disabled:opacity-50 text-sm hover:bg-nexpura-bronze-hover transition-colors">
+                    <button disabled={noteSubmitting || !newNote.trim()} className="nx-btn-primary cursor-pointer disabled:opacity-50">
                       Save Note
                     </button>
                   </div>
@@ -1001,7 +1001,7 @@ export default function CustomerDetailClient({
             {notes ? (
               <div className="space-y-3">
                 {notes.split("\n\n").filter(Boolean).reverse().map((n, idx) => (
-                  <div key={idx} className="bg-white p-6 rounded-2xl border border-stone-100 shadow-sm text-sm text-stone-700 whitespace-pre-wrap">
+                  <div key={idx} className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm text-sm text-stone-700 whitespace-pre-wrap">
                     {n}
                   </div>
                 ))}
@@ -1053,7 +1053,7 @@ export default function CustomerDetailClient({
               <button
                 type="button"
                 onClick={() => setOpenComm(null)}
-                className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-lg hover:bg-stone-50"
+                className="px-4 py-2 text-sm font-medium border border-stone-200 text-stone-700 bg-white rounded-md hover:bg-stone-50 hover:border-stone-300 transition-colors duration-200"
               >
                 Close
               </button>
@@ -1069,8 +1069,8 @@ export default function CustomerDetailClient({
             <h3 className="font-bold text-lg text-stone-900 mb-2">Archive Customer?</h3>
             <p className="text-sm text-stone-500 mb-6">This customer will be hidden from your active list. You can restore them later.</p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowArchiveModal(false)} className="px-4 py-2 text-sm font-medium border border-stone-200 rounded-xl hover:bg-stone-50">Cancel</button>
-              <button onClick={handleArchive} disabled={isPending} className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50">
+              <button onClick={() => setShowArchiveModal(false)} className="px-4 py-2 text-sm font-medium border border-stone-200 text-stone-700 bg-white rounded-md hover:bg-stone-50 hover:border-stone-300 transition-colors duration-200">Cancel</button>
+              <button onClick={handleArchive} disabled={isPending} className="px-4 py-2 text-sm font-medium border border-red-200 text-red-600 bg-white rounded-md hover:bg-red-50 transition-colors duration-200 disabled:opacity-50">
                 {isPending ? "Archiving..." : "Archive"}
               </button>
             </div>

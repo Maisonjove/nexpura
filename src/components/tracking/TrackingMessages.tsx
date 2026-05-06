@@ -78,8 +78,8 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
   );
 
   return (
-    <section className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
-      <header className="px-5 py-5 sm:px-8 sm:py-6 border-b border-stone-100">
+    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+      <header className="px-5 py-5 sm:px-8 sm:py-6 border-b border-stone-200">
         <h2 className="font-serif text-lg text-stone-900 tracking-tight">
           Request an update or amendment
         </h2>
@@ -149,7 +149,7 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
           e.preventDefault();
           onSend();
         }}
-        className="border-t border-stone-100 px-5 py-5 sm:px-8 sm:py-6 bg-white space-y-4"
+        className="border-t border-stone-200 px-5 py-5 sm:px-8 sm:py-6 bg-white space-y-4"
       >
         <textarea
           value={body}
@@ -162,7 +162,7 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
           rows={3}
           maxLength={4000}
           disabled={sending}
-          className="w-full px-4 py-3 text-sm text-stone-900 placeholder-stone-400 bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/25 focus:border-nexpura-bronze resize-none disabled:opacity-60 font-sans transition-colors"
+          className="w-full px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/20 focus:border-nexpura-bronze resize-none disabled:opacity-60 font-sans transition-all duration-200"
         />
         {error && (
           <p
@@ -179,14 +179,14 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
               checked={isAmendment}
               onChange={(e) => setIsAmendment(e.target.checked)}
               disabled={sending}
-              className="w-3.5 h-3.5 rounded border-stone-300 text-nexpura-bronze focus:ring-nexpura-bronze/25 accent-nexpura-bronze"
+              className="w-3.5 h-3.5 rounded border-stone-300 text-nexpura-bronze focus:ring-nexpura-bronze/20 accent-nexpura-bronze"
             />
             This is an amendment request
           </label>
           <button
             type="submit"
             disabled={sending || !body.trim()}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-nexpura-bronze text-white text-sm font-medium rounded-lg hover:bg-nexpura-bronze-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-sans"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-nexpura-bronze text-white text-sm font-medium rounded-md hover:bg-nexpura-bronze-hover transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-sans cursor-pointer"
           >
             {sending ? (
               <>

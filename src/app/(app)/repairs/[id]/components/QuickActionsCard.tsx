@@ -31,20 +31,20 @@ export default function QuickActionsCard({
   onGenerateInvoice,
 }: QuickActionsCardProps) {
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-      <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Quick Actions</h2>
+    <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+      <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-3">Quick Actions</h2>
       <div className="space-y-2">
         {repair.deposit_amount && !repair.deposit_paid && (
           <button
             onClick={() => onOpenPaymentModal(repair.deposit_amount ?? undefined)}
-            className="w-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 px-4 py-2.5 rounded-lg hover:bg-amber-100 transition-colors text-left"
+            className="w-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 px-4 py-2.5 rounded-md hover:bg-amber-100 transition-colors text-left"
           >
             💰 Take Deposit ({fmt(repair.deposit_amount, currency)})
           </button>
         )}
         <button
           onClick={() => onOpenPaymentModal()}
-          className="w-full text-sm font-medium bg-stone-50 text-stone-700 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-100 transition-colors text-left"
+          className="w-full text-sm font-medium bg-stone-50 text-stone-700 border border-stone-200 px-4 py-2.5 rounded-md hover:bg-stone-100 transition-colors text-left"
         >
           📥 Record Payment
         </button>
@@ -52,20 +52,20 @@ export default function QuickActionsCard({
           <button
             onClick={onMarkFullyPaid}
             disabled={isPending}
-            className="w-full text-sm font-medium bg-nexpura-bronze text-white px-4 py-2.5 rounded-lg hover:bg-nexpura-bronze-hover transition-colors text-left disabled:opacity-50"
+            className="w-full nx-btn-primary cursor-pointer text-sm text-left disabled:opacity-50"
           >
             ✓ Mark Fully Paid ({fmt(balanceDue, currency)})
           </button>
         )}
         {invoice ? (
-          <Link href={`/invoices/${invoice.id}`} className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors">
+          <Link href={`/invoices/${invoice.id}`} className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2.5 rounded-md hover:bg-stone-50 transition-colors">
             📄 View Invoice
           </Link>
         ) : (
           <button
             onClick={onGenerateInvoice}
             disabled={isPending}
-            className="w-full text-sm font-medium bg-nexpura-bronze text-white px-4 py-2.5 rounded-lg hover:bg-nexpura-bronze-hover transition-colors text-left disabled:opacity-50"
+            className="w-full nx-btn-primary cursor-pointer text-sm text-left disabled:opacity-50"
           >
             📄 Generate Invoice
           </button>

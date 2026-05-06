@@ -58,8 +58,8 @@ export default function SidebarQuickActions({
   }
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-      <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Quick Actions</h2>
+    <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm">
+      <h2 className="text-[0.75rem] font-semibold text-stone-400 uppercase tracking-[0.15em] mb-3">Quick Actions</h2>
       
       <div className="space-y-2">
         {/* Primary Contextual Action */}
@@ -67,7 +67,7 @@ export default function SidebarQuickActions({
           <button
             onClick={primaryAction.onClick}
             disabled={isPending}
-            className="w-full text-sm font-semibold bg-[#8B7355] hover:bg-[#7A6347] text-white px-4 py-3 rounded-lg transition-colors disabled:opacity-50"
+            className="w-full nx-btn-primary cursor-pointer text-sm disabled:opacity-50"
           >
             {primaryAction.label}
           </button>
@@ -81,7 +81,7 @@ export default function SidebarQuickActions({
               <button
                 onClick={() => onStageChange("ready")}
                 disabled={isPending}
-                className="w-full text-sm font-medium text-stone-700 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+                className="w-full text-sm font-medium text-stone-700 border border-stone-200 px-4 py-2.5 rounded-md hover:bg-stone-50 transition-colors disabled:opacity-50"
               >
                 Mark Ready for Pickup
               </button>
@@ -90,7 +90,7 @@ export default function SidebarQuickActions({
               <button
                 onClick={() => onStageChange("collected")}
                 disabled={isPending}
-                className="w-full text-sm font-medium text-stone-700 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+                className="w-full text-sm font-medium text-stone-700 border border-stone-200 px-4 py-2.5 rounded-md hover:bg-stone-50 transition-colors disabled:opacity-50"
               >
                 Mark Collected
               </button>
@@ -101,7 +101,7 @@ export default function SidebarQuickActions({
               <button
                 onClick={onMarkFullyPaid}
                 disabled={isPending}
-                className="w-full text-sm font-medium text-stone-700 border border-stone-200 px-4 py-2.5 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+                className="w-full text-sm font-medium text-stone-700 border border-stone-200 px-4 py-2.5 rounded-md hover:bg-stone-50 transition-colors disabled:opacity-50"
               >
                 Mark Fully Paid ({fmt(balanceDue, currency)})
               </button>
@@ -110,16 +110,16 @@ export default function SidebarQuickActions({
         )}
 
         {/* Document Actions */}
-        <div className="border-t border-stone-100 pt-2 mt-2 space-y-2">
+        <div className="border-t border-stone-200 pt-2 mt-2 space-y-2">
           <Link
             href={`/tasks?new=1&linked_type=repair&linked_id=${repair.id}&stage=${repair.stage}`}
-            className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors text-center"
+            className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-md hover:bg-stone-50 transition-colors text-center"
           >
             ＋ Create Task
           </Link>
           <button
             onClick={() => window.open(`/print/repair/${repair.id}`, "_blank")}
-            className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors flex items-center justify-center gap-2"
+            className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-md hover:bg-stone-50 transition-colors flex items-center justify-center gap-2"
           >
             🖨️ Print
           </button>
@@ -128,7 +128,7 @@ export default function SidebarQuickActions({
             <button 
               onClick={onEmailInvoice}
               disabled={emailSending}
-              className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-md hover:bg-stone-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               ✉️ Email Invoice
             </button>
@@ -138,7 +138,7 @@ export default function SidebarQuickActions({
             <button 
               onClick={onEmailReady}
               disabled={emailSending}
-              className="w-full text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 px-4 py-2 rounded-lg hover:bg-amber-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 px-4 py-2 rounded-md hover:bg-amber-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               ✉️ Email Ready
             </button>
@@ -147,7 +147,7 @@ export default function SidebarQuickActions({
           {invoice && (
             <Link 
               href={`/invoices/${invoice.id}`}
-              className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-lg hover:bg-stone-50 transition-colors text-center"
+              className="block w-full text-sm font-medium text-stone-600 border border-stone-200 px-4 py-2 rounded-md hover:bg-stone-50 transition-colors text-center"
             >
               View Invoice
             </Link>
