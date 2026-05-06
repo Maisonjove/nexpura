@@ -35,10 +35,14 @@ export default async function RefundDetailPage({ params }: { params: Promise<{ i
     .eq("refund_id", id);
 
   // Audit trail — pull recent log entries for this refund + the original sale
-  // (so a void shows alongside the create event).
+  // (so a void shows alongside the create event). Cluster-PR item 4
+  // adds old_data so the per-row diff view (AuditDiffView) can render
+  // the full field-by-field change set on expand. The previous select
+  // omitted old_data entirely, so even if a click handler was wired, the
+  // diff view had nothing to render against → rows looked dead.
   const { data: auditLogs } = await admin
     .from("audit_logs")
-    .select("id, action, entity_type, entity_id, new_data, created_at, user_id")
+    .select("id, action, entity_type, entity_id, old_data, new_data, created_at, user_id")
     .eq("tenant_id", userData.tenant_id)
     .or(`entity_id.eq.${id},and(entity_type.eq.refund,entity_id.eq.${id})`)
     .order("created_at", { ascending: false })

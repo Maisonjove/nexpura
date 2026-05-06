@@ -36,7 +36,20 @@ export interface DateRange {
 export interface ReconciliationTotals {
   /** Sum of sales.total in the date range (top-line revenue per tenant). */
   salesTopLine: number;
-  /** Sum of sale_line_items.line_total in the date range. Should equal salesTopLine. */
+  /**
+   * Sum of sales.subtotal in the date range (pre-tax line-item base).
+   * This — NOT salesTopLine — is what reconciles against
+   * sum(sale_items.line_total). Cluster-PR item 3 (R5 math closure):
+   * pre-fix the page compared sales.total (incl. tax) vs sale_items
+   * line_total (excl. tax) → constant ~10% delta on every tenant.
+   */
+  salesSubtotal: number;
+  /** Sum of sales.tax_amount in the date range. Tax aggregates at the
+   * sale level only (sale_items has no per-line tax column), so the tax
+   * row's expected and actual are both this value — surfacing it gives
+   * the user the breakdown without pretending we have line-level tax. */
+  salesTax: number;
+  /** Sum of sale_line_items.line_total in the date range. Should equal salesSubtotal. */
   salesLineItemsSum: number;
   /** Sum of refunds.total in the date range. */
   refundsTopLine: number;
@@ -77,7 +90,7 @@ export async function getReconciliationTotals(
   ] = await Promise.all([
     admin
       .from("sales")
-      .select("total")
+      .select("total, subtotal, tax_amount")
       .eq("tenant_id", tenantId)
       .gte("created_at", range.fromIso)
       .lt("created_at", range.toIso),
@@ -115,6 +128,8 @@ export async function getReconciliationTotals(
 
   return {
     salesTopLine: sumN(sales, "total"),
+    salesSubtotal: sumN(sales, "subtotal"),
+    salesTax: sumN(sales, "tax_amount"),
     salesLineItemsSum: sumN(saleItems, "line_total"),
     refundsTopLine: sumN(refunds, "total"),
     refundItemsSum: sumN(refundItems, "line_total"),
@@ -163,12 +178,42 @@ export function buildReconciliationRows(
 ): ReconciliationRow[] {
   return [
     {
-      label: "Sales top-line vs line items",
+      // Cluster-PR item 3 (R5 math closure):
+      // sales.subtotal (pre-tax) reconciles against
+      // sum(sale_items.line_total) — both are pre-tax amounts.
+      // The pre-fix row compared sales.total (incl. tax) vs the
+      // line-items sum (excl. tax) → a constant ~10% delta that the
+      // user could not act on. Splitting subtotal vs tax into two rows
+      // makes both invariants independently verifiable.
+      label: "Sales subtotal vs line items (pre-tax)",
       description:
-        "sum(sales.total) should equal sum(sale_items.line_total) for the period",
-      expected: totals.salesTopLine,
+        "sum(sales.subtotal) should equal sum(sale_items.line_total) for the period — both are pre-tax",
+      expected: totals.salesSubtotal,
       actual: totals.salesLineItemsSum,
-      ...slice(compareTotals(totals.salesTopLine, totals.salesLineItemsSum)),
+      ...slice(compareTotals(totals.salesSubtotal, totals.salesLineItemsSum)),
+    },
+    {
+      // Tax row — sale_items has no per-line tax column so we surface
+      // the sale-level aggregate as both expected + actual. This keeps
+      // the row in the UI for visibility (and as a hook point for a
+      // future per-line tax breakdown), and because the comparison is
+      // sum-vs-itself the row is always isMatch=true. If tax-at-line
+      // is added later, swap actual to that aggregate without touching
+      // the rest of the contract.
+      label: "Sales tax (sale-level total)",
+      description:
+        "sum(sales.tax_amount) — surfaced for visibility. sale_items has no per-line tax column, so the comparison is at the sale level only.",
+      expected: totals.salesTax,
+      actual: totals.salesTax,
+      ...slice(compareTotals(totals.salesTax, totals.salesTax)),
+    },
+    {
+      label: "Sales total vs subtotal + tax (sanity)",
+      description:
+        "sum(sales.total) should equal sum(sales.subtotal) + sum(sales.tax_amount)",
+      expected: totals.salesTopLine,
+      actual: round2(totals.salesSubtotal + totals.salesTax),
+      ...slice(compareTotals(totals.salesTopLine, totals.salesSubtotal + totals.salesTax)),
     },
     {
       label: "Refunds top-line vs line items",

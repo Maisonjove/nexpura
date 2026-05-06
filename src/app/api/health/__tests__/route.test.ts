@@ -143,4 +143,30 @@ describe("HEAD /api/health", () => {
     const res = await HEAD();
     expect(res.status).toBe(503);
   });
+
+  // Cluster-PR item 7 (Finding 8 / N-27):
+  // Same-fate contract test — HEAD must return the same status as GET
+  // for the same DB-health outcome. Pre-fix this contract was implicit
+  // (separate handlers reading the same helper). Pinning it here means
+  // a future "let's split the helpers" refactor can't silently produce
+  // 200-on-GET / 503-on-HEAD again.
+  it("returns the same status as GET for the same DB-health outcome (healthy)", async () => {
+    mockCheckDatabaseHealth.mockResolvedValue({ healthy: true, latencyMs: 12 });
+    const { GET, HEAD } = await import("../route");
+
+    const getRes = await GET();
+    const headRes = await HEAD();
+    expect(headRes.status).toBe(getRes.status);
+    expect(headRes.status).toBe(200);
+  });
+
+  it("returns the same status as GET for the same DB-health outcome (unreachable)", async () => {
+    mockCheckDatabaseHealth.mockResolvedValue({ healthy: false, latencyMs: 5000 });
+    const { GET, HEAD } = await import("../route");
+
+    const getRes = await GET();
+    const headRes = await HEAD();
+    expect(headRes.status).toBe(getRes.status);
+    expect(headRes.status).toBe(503);
+  });
 });

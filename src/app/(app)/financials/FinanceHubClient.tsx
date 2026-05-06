@@ -51,15 +51,22 @@ interface Props {
   hubData: FinanceHubData;
 }
 
+// Cluster-PR item 5 (Track C resolution, R5):
+// `maximumFractionDigits: 0` was rounding tile values to the nearest
+// dollar — $2,722.50 displayed as "$2,723", which doesn't reconcile
+// with the underlying NUMERIC(14,2) amounts on a verifiable-math probe.
+// 2-decimal precision matches the rest of the app's currency surface
+// (sale receipts, refund detail, reconciliation page).
 function fmtCurrency(amount: number, currency: string = "AUD"): string {
   try {
     return new Intl.NumberFormat("en-AU", {
       style: "currency",
       currency,
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
     }).format(amount);
   } catch {
-    return `$${Math.round(amount).toLocaleString()}`;
+    return `$${amount.toFixed(2)}`;
   }
 }
 

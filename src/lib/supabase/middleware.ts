@@ -348,6 +348,11 @@ const TENANT_APP_ROUTES = new Set([
   "tasks",
   "copilot",
   "website",
+  // R6-F5 (item 14): see src/lib/app-routes.ts — add /digital so
+  // /{slug}/digital is recognised as a tenant-prefixed app route and
+  // gets rewritten to /digital instead of 404'ing on the missing
+  // [slug]/digital page.
+  "digital",
   "documents",
   "integrations",
   "reminders",

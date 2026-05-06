@@ -41,12 +41,48 @@ function startOfNextMonthIso(): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
 }
 
-function parseDateOrFallback(input: string | undefined, fallback: string): string {
-  if (!input) return fallback;
-  // Accept YYYY-MM-DD; reject anything else and fall back.
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return fallback;
+// Cluster-PR item 8 (R5-F4):
+// Pre-fix: malformed dates (e.g. ?from=52026-05-01 from a triple-click +
+// retype that produced year=52026) silently fell back to the default
+// range. The user saw "current month" data but had asked for May 52026
+// and had no idea their input was rejected.
+//
+// Fix: parse strictly (4-digit year, 1-9999 inclusive — matches HTML
+// <input type=date> spec) and return both the resolved ISO + a flag the
+// page passes to the client to show a banner. The client also pins
+// max="9999-12-31" on the input so the type=date picker won't even
+// produce a 5-digit year via its native UI; the server-side guard
+// handles direct URL manipulation / browser quirks.
+function parseDateOrFallback(input: string | undefined, fallback: string): {
+  iso: string;
+  warning: string | null;
+} {
+  if (!input) return { iso: fallback, warning: null };
+  // Strict YYYY-MM-DD with 4-digit year. Year must be 1-9999.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
+  if (!m) {
+    return {
+      iso: fallback,
+      warning: `Invalid date "${input}" — fell back to default range.`,
+    };
+  }
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const day = parseInt(m[3], 10);
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return {
+      iso: fallback,
+      warning: `Date "${input}" is out of range — fell back to default.`,
+    };
+  }
   const d = new Date(`${input}T00:00:00Z`);
-  return Number.isNaN(d.getTime()) ? fallback : d.toISOString();
+  if (Number.isNaN(d.getTime())) {
+    return {
+      iso: fallback,
+      warning: `Could not parse date "${input}" — fell back to default.`,
+    };
+  }
+  return { iso: d.toISOString(), warning: null };
 }
 
 export default async function ReconciliationPage({ searchParams }: PageProps) {
@@ -95,8 +131,13 @@ export default async function ReconciliationPage({ searchParams }: PageProps) {
     );
   }
 
-  const fromIso = parseDateOrFallback(sp.from, startOfMonthIso());
-  const toIso = parseDateOrFallback(sp.to, startOfNextMonthIso());
+  const fromParsed = parseDateOrFallback(sp.from, startOfMonthIso());
+  const toParsed = parseDateOrFallback(sp.to, startOfNextMonthIso());
+  const fromIso = fromParsed.iso;
+  const toIso = toParsed.iso;
+  const dateWarning = [fromParsed.warning, toParsed.warning]
+    .filter((w): w is string => Boolean(w))
+    .join(" ");
 
   const totals = await getReconciliationTotals(admin, tenantId, {
     fromIso,
@@ -111,6 +152,7 @@ export default async function ReconciliationPage({ searchParams }: PageProps) {
       fromIso={fromIso}
       toIso={toIso}
       tenantName={tenant.name ?? "your tenant"}
+      dateWarning={dateWarning || null}
     />
   );
 }

@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import AuditDiffView from "@/components/AuditDiffView";
 import { voidRefund } from "../actions";
 
 interface RefundItem {
@@ -35,6 +37,7 @@ interface AuditEntry {
   action: string;
   entity_type: string | null;
   entity_id: string | null;
+  old_data: Record<string, unknown> | null;
   new_data: Record<string, unknown> | null;
   created_at: string;
   user_id: string | null;
@@ -234,19 +237,40 @@ export default function RefundDetailClient({ refund, items, auditLogs = [] }: Pr
               <p className="px-5 py-8 text-center text-sm text-stone-400">No audit history yet.</p>
             ) : (
               <ul className="divide-y divide-stone-100">
-                {auditLogs.map((log) => (
-                  <li key={log.id} className="px-5 py-3 text-sm">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="font-medium text-stone-900 capitalize">
-                        {log.action.replace(/_/g, " ")}
-                        {log.new_data && (log.new_data as { voided?: boolean }).voided && " — voided"}
-                      </span>
-                      <span className="text-xs text-stone-400">
-                        {new Date(log.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                  </li>
-                ))}
+                {/* Cluster-PR item 4 (R5 Finding 5):
+                    Each audit entry now expands to show the full
+                    AuditDiffView (red/green field-by-field diff over
+                    old_data vs new_data). Pre-fix the rows showed only
+                    the action label + timestamp — clicks were inert. */}
+                {auditLogs.map((log) => {
+                  const hasDiff = Boolean(log.old_data || log.new_data);
+                  return (
+                    <li key={log.id} className="px-5 py-3 text-sm">
+                      <details className="group/diff">
+                        <summary className={`flex items-baseline justify-between gap-3 ${hasDiff ? "cursor-pointer" : ""}`}>
+                          <span className="font-medium text-stone-900 capitalize inline-flex items-center gap-1.5">
+                            {hasDiff && (
+                              <ChevronDownIcon className="w-3.5 h-3.5 text-stone-400 transition-transform group-open/diff:rotate-180" />
+                            )}
+                            {log.action.replace(/_/g, " ")}
+                            {log.new_data && (log.new_data as { voided?: boolean }).voided && " — voided"}
+                          </span>
+                          <span className="text-xs text-stone-400">
+                            {new Date(log.created_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </summary>
+                        {hasDiff && (
+                          <div className="mt-3 bg-stone-50 border border-stone-100 rounded-lg p-3">
+                            <AuditDiffView
+                              oldData={log.old_data}
+                              newData={log.new_data}
+                            />
+                          </div>
+                        )}
+                      </details>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

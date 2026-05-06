@@ -73,8 +73,11 @@ describe("A1 reconciliation page — date range handling", () => {
   });
 
   it("validates user-supplied dates (YYYY-MM-DD) and falls back on bad input", () => {
+    // Cluster-PR item 8 (R5-F4): regex now has capture groups so the
+    // function can also extract the year and validate it's <= 9999.
+    // The literal pattern is still anchored YYYY-MM-DD.
     expect(PAGE).toMatch(/parseDateOrFallback/);
-    expect(PAGE).toMatch(/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$/);
+    expect(PAGE).toMatch(/\^\(?\\d\{4\}\)?-\(?\\d\{2\}\)?-\(?\\d\{2\}\)?\$/);
   });
 });
 

@@ -37,7 +37,18 @@ export default async function InventoryDetailPage({
     canViewCost = auth.permissions.view_cost_price;
   }
 
-  // Fetch item + movements in parallel
+  // Fetch item + movements in parallel.
+  //
+  // Cluster-PR item 6 (R5 Finding 7):
+  // Pre-fix the movements select embedded `users(full_name)`, but
+  // stock_movements.created_by FKs auth.users — NOT public.users — so
+  // PostgREST couldn't resolve the embed and returned [] for the whole
+  // query. Tenant 316a3313 had 3 movements on inventory item
+  // "QA A1 Test Pendant" yet the panel rendered "No movements recorded
+  // yet". Fix: drop the embed, fetch movements by inventory_id +
+  // tenant_id (defence-in-depth), then resolve created_by → full_name
+  // via a follow-up batch lookup on public.users (the IDs match — both
+  // tables share the auth user UUID).
   const [itemResult, movementsResult] = await Promise.all([
     admin
       .from("inventory")
@@ -57,8 +68,9 @@ export default async function InventoryDetailPage({
       .single(),
     admin
       .from("stock_movements")
-      .select("id, movement_type, quantity_change, quantity_after, notes, created_at, created_by, users(full_name)")
+      .select("id, movement_type, quantity_change, quantity_after, notes, created_at, created_by")
       .eq("inventory_id", id)
+      .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false })
       .limit(50),
   ]);
@@ -79,9 +91,39 @@ export default async function InventoryDetailPage({
   }
 
   const typedItem = item as typeof item & { stock_categories?: { name: string } | null };
-  const typedMovements = (movementsResult.data ?? []).map(m => ({
+
+  // Resolve created_by → full_name via a follow-up lookup on
+  // public.users (the embed cannot be used — see comment above the
+  // movements query). Batch-by-IDs to avoid N+1.
+  const rawMovements = (movementsResult.data ?? []) as Array<{
+    id: string;
+    movement_type: string;
+    quantity_change: number;
+    quantity_after: number;
+    notes: string | null;
+    created_at: string;
+    created_by: string | null;
+  }>;
+  const userIds = Array.from(
+    new Set(
+      rawMovements.map((m) => m.created_by).filter((u): u is string => !!u),
+    ),
+  );
+  let userNameById = new Map<string, string | null>();
+  if (userIds.length > 0) {
+    const { data: usersData } = await admin
+      .from("users")
+      .select("id, full_name")
+      .in("id", userIds);
+    userNameById = new Map(
+      (usersData ?? []).map((u) => [u.id as string, (u.full_name as string | null) ?? null]),
+    );
+  }
+  const typedMovements = rawMovements.map((m) => ({
     ...m,
-    users: Array.isArray(m.users) ? m.users[0] ?? null : m.users
+    users: m.created_by
+      ? { full_name: userNameById.get(m.created_by) ?? null }
+      : null,
   })) as Array<{
     id: string;
     movement_type: string;

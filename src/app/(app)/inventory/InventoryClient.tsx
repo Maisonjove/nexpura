@@ -148,8 +148,17 @@ export default function InventoryClient({
     return items.filter((item) => {
       const q = search.toLowerCase();
       if (q) {
+        // Cluster-PR item 12 (R5-F1 defensive):
+        // Pre-fix item.name was assumed non-null. The InventoryForm
+        // misfire path Desktop-Opus surfaced in R5 could (in theory)
+        // produce a row with NULL/empty name — `null.toLowerCase()` then
+        // throws inside .filter and the whole list collapses. Coerce
+        // every searchable string with `?? ""` so a single malformed row
+        // doesn't drop the rest of the page. Cheap insurance; current
+        // prod data on tenant 316a3313 has no unnamed rows so this is
+        // forward-defensive only.
         const matchesSearch =
-          item.name.toLowerCase().includes(q) ||
+          (item.name?.toLowerCase() ?? "").includes(q) ||
           (item.sku?.toLowerCase() ?? "").includes(q) ||
           (item.stock_number?.toLowerCase() ?? "").includes(q) ||
           (item.barcode_value?.toLowerCase() ?? "").includes(q) ||

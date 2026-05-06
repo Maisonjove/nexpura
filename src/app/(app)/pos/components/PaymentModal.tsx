@@ -107,11 +107,37 @@ export default function PaymentModal({
         </div>
 
         {/* Tabs */}
+        {/* Cluster-PR item 11 (R5-F5):
+            Pre-fix the first click on a tab button was "eaten" when an
+            input inside the previously-active tab had focus. Sequence
+            was: input blur → setState → re-render → click target moved
+            → the synthesised click arrived at the new location and was
+            ignored. The user had to click twice.
+
+            Fix: drive the tab switch from onMouseDown (fires BEFORE
+            blur) instead of onClick (fires AFTER blur). preventDefault
+            stops the focus from shifting to the button so the next
+            tab's auto-focused field can take focus cleanly. type="button"
+            is added defensively in case this modal is ever wrapped in a
+            <form>. */}
         <div className="flex border-b border-stone-200 overflow-x-auto">
           {(["card", "cash", "store_credit", "split", "voucher", "layby"] as PaymentTab[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setPaymentTab(tab)}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setPaymentTab(tab);
+              }}
+              onClick={(e) => {
+                // Keyboard activation (Enter/Space) doesn't dispatch a
+                // mousedown — keep onClick as the keyboard fallback so
+                // a11y users can still switch tabs without a mouse.
+                if (paymentTab !== tab) {
+                  setPaymentTab(tab);
+                }
+                e.preventDefault();
+              }}
               className={`flex-1 min-w-[80px] py-3 text-[10px] font-bold uppercase tracking-widest transition-colors ${
                 paymentTab === tab
                   ? "border-b-2 border-amber-600 text-amber-700"

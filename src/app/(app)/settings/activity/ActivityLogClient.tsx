@@ -46,7 +46,18 @@ interface Props {
   dateTo: string;
 }
 
+// Cluster-PR item 2 (2026-05-06):
+// ENTITY_LABELS now covers every entity_type that flows through either
+// the app-level logAuditEvent (singular) OR the audit_sensitive_changes
+// trigger. Cluster-PR item 1 normalized the trigger to emit singular
+// entity_type going forward, but legacy rows in audit_logs (pre-item-1
+// apply) still hold the plural form ('sales','refunds','tasks'…), so
+// the plural keys are kept here as defensive aliases pointing at the
+// same display label. Without these aliases legacy rows render as the
+// raw lowercase string AND the dropdown filter would silently drop
+// them.
 const ENTITY_LABELS: Record<string, string> = {
+  // Singular forms (canonical, going forward).
   inventory: "Inventory",
   customer: "Customer",
   invoice: "Invoice",
@@ -56,6 +67,43 @@ const ENTITY_LABELS: Record<string, string> = {
   location: "Location",
   team_member: "Team Member",
   user: "User",
+  sale: "Sale",
+  sale_item: "Sale Item",
+  refund: "Refund",
+  refund_item: "Refund Item",
+  payment: "Payment",
+  stock_movement: "Stock Movement",
+  gl_entry: "GL Entry",
+  task: "Task",
+  expense: "Expense",
+  supplier: "Supplier",
+  quote: "Quote",
+  gift_voucher: "Gift Voucher",
+  appointment: "Appointment",
+  tenant: "Tenant",
+  // Plural aliases — defensive against legacy trigger rows
+  // (pre cluster-PR item 1 apply). Same display labels as singular
+  // counterparts so the dropdown shows one option per concept.
+  customers: "Customer",
+  invoices: "Invoice",
+  repairs: "Repair",
+  bespoke_jobs: "Bespoke Job",
+  locations: "Location",
+  team_members: "Team Member",
+  users: "User",
+  sales: "Sale",
+  sale_items: "Sale Item",
+  refunds: "Refund",
+  refund_items: "Refund Item",
+  payments: "Payment",
+  stock_movements: "Stock Movement",
+  gl_entries: "GL Entry",
+  tasks: "Task",
+  expenses: "Expense",
+  suppliers: "Supplier",
+  quotes: "Quote",
+  gift_vouchers: "Gift Voucher",
+  appointments: "Appointment",
 };
 
 const ENTITY_BADGE_CLASS: Record<string, string> = {
@@ -68,6 +116,41 @@ const ENTITY_BADGE_CLASS: Record<string, string> = {
   location: "nx-badge-neutral",
   team_member: "nx-badge-info",
   user: "nx-badge-info",
+  sale: "nx-badge-success",
+  sale_item: "nx-badge-success",
+  refund: "nx-badge-warning",
+  refund_item: "nx-badge-warning",
+  payment: "nx-badge-success",
+  stock_movement: "nx-badge-info",
+  gl_entry: "nx-badge-success",
+  task: "nx-badge-neutral",
+  expense: "nx-badge-warning",
+  supplier: "nx-badge-info",
+  quote: "nx-badge-info",
+  gift_voucher: "nx-badge-success",
+  appointment: "nx-badge-info",
+  tenant: "nx-badge-neutral",
+  // Plural aliases.
+  customers: "nx-badge-info",
+  invoices: "nx-badge-success",
+  repairs: "nx-badge-warning",
+  bespoke_jobs: "nx-badge-warning",
+  locations: "nx-badge-neutral",
+  team_members: "nx-badge-info",
+  users: "nx-badge-info",
+  sales: "nx-badge-success",
+  sale_items: "nx-badge-success",
+  refunds: "nx-badge-warning",
+  refund_items: "nx-badge-warning",
+  payments: "nx-badge-success",
+  stock_movements: "nx-badge-info",
+  gl_entries: "nx-badge-success",
+  tasks: "nx-badge-neutral",
+  expenses: "nx-badge-warning",
+  suppliers: "nx-badge-info",
+  quotes: "nx-badge-info",
+  gift_vouchers: "nx-badge-success",
+  appointments: "nx-badge-info",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -242,7 +325,20 @@ export default function ActivityLogClient({
                   className="w-full px-4 py-2.5 rounded-lg border border-stone-200 text-sm text-stone-900 bg-white focus:border-nexpura-bronze focus:ring-2 focus:ring-nexpura-bronze/20 outline-none transition-all duration-200"
                 >
                   <option value="">All types</option>
-                  {Object.entries(ENTITY_LABELS).map(([key, label]) => (
+                  {/* Dedupe by display label so plural aliases don't
+                      double up the dropdown — see ENTITY_LABELS comment.
+                      Filter value uses the singular key (canonical going
+                      forward); legacy plural rows are rendered with the
+                      same label so users don't notice the split. */}
+                  {Array.from(
+                    Object.entries(ENTITY_LABELS).reduce<Map<string, string>>(
+                      (acc, [key, label]) => {
+                        if (!acc.has(label)) acc.set(label, key);
+                        return acc;
+                      },
+                      new Map(),
+                    ),
+                  ).map(([label, key]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
                 </select>

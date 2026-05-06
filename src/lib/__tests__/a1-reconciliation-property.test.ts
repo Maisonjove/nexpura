@@ -40,8 +40,15 @@ function randAmount(): number {
 }
 
 function randomTotals(): ReconciliationTotals {
+  // Cluster-PR item 3: salesSubtotal + salesTax added so the sales-line
+  // row reconciles against the pre-tax base instead of the tax-included
+  // top-line. Random subtotals/tax kept independent of salesTopLine for
+  // the property-style fuzz; the sanity row is allowed to fail under
+  // these draws (only the row-shape invariant is asserted in P3).
   return {
     salesTopLine: randAmount(),
+    salesSubtotal: randAmount(),
+    salesTax: randAmount(),
     salesLineItemsSum: randAmount(),
     refundsTopLine: randAmount(),
     refundItemsSum: randAmount(),
@@ -99,28 +106,43 @@ describe("A1 reconciliation — invariants (property-style)", () => {
   });
 
   it("P3: row builder threads totals through to expected/actual without off-by-one", () => {
+    // Cluster-PR item 3 row layout (6 rows):
+    //   0 — sales subtotal vs line items (pre-tax)
+    //   1 — sales tax (sale-level surface)
+    //   2 — sales total vs subtotal + tax sanity
+    //   3 — refunds top-line vs line items
+    //   4 — GL refunds vs negated refunds top-line
+    //   5 — GL sales vs sales top-line
     for (let i = 0; i < FUZZ_RUNS; i++) {
       const t = randomTotals();
       const rows = buildReconciliationRows(t);
-      expect(rows.length).toBe(4);
-      // Row 0: sales top-line vs line items.
-      expect(rows[0].expected).toBe(t.salesTopLine);
+      expect(rows.length).toBe(6);
+      // Row 0: sales subtotal vs line items (pre-tax).
+      expect(rows[0].expected).toBe(t.salesSubtotal);
       expect(rows[0].actual).toBe(t.salesLineItemsSum);
-      // Row 1: refunds top-line vs line items.
-      expect(rows[1].expected).toBe(t.refundsTopLine);
-      expect(rows[1].actual).toBe(t.refundItemsSum);
-      // Row 2: GL refunds vs negated refunds top-line (P5 detail).
-      expect(rows[2].expected).toBe(-t.refundsTopLine);
-      expect(rows[2].actual).toBe(t.glRefundsNet);
-      // Row 3: GL sales vs sales top-line.
-      expect(rows[3].expected).toBe(t.salesTopLine);
-      expect(rows[3].actual).toBe(t.glSalesNet);
+      // Row 1: tax (self-self comparison, expected==actual).
+      expect(rows[1].expected).toBe(t.salesTax);
+      expect(rows[1].actual).toBe(t.salesTax);
+      expect(rows[1].isMatch).toBe(true);
+      // Row 2: sales total vs subtotal + tax sanity.
+      expect(rows[2].expected).toBe(t.salesTopLine);
+      // Row 3: refunds top-line vs line items.
+      expect(rows[3].expected).toBe(t.refundsTopLine);
+      expect(rows[3].actual).toBe(t.refundItemsSum);
+      // Row 4: GL refunds vs negated refunds top-line (P5 detail).
+      expect(rows[4].expected).toBe(-t.refundsTopLine);
+      expect(rows[4].actual).toBe(t.glRefundsNet);
+      // Row 5: GL sales vs sales top-line.
+      expect(rows[5].expected).toBe(t.salesTopLine);
+      expect(rows[5].actual).toBe(t.glSalesNet);
     }
   });
 
-  it("P4: zero totals produce 4 rows all matching", () => {
+  it("P4: zero totals produce 6 rows all matching", () => {
     const zero: ReconciliationTotals = {
       salesTopLine: 0,
+      salesSubtotal: 0,
+      salesTax: 0,
       salesLineItemsSum: 0,
       refundsTopLine: 0,
       refundItemsSum: 0,
@@ -135,7 +157,7 @@ describe("A1 reconciliation — invariants (property-style)", () => {
       },
     };
     const rows = buildReconciliationRows(zero);
-    expect(rows.length).toBe(4);
+    expect(rows.length).toBe(6);
     for (const r of rows) {
       expect(r.isMatch).toBe(true);
       expect(r.delta).toBe(0);
@@ -152,6 +174,8 @@ describe("A1 reconciliation — invariants (property-style)", () => {
       const refundsTopLine = randAmount();
       const t: ReconciliationTotals = {
         salesTopLine: 0,
+        salesSubtotal: 0,
+        salesTax: 0,
         salesLineItemsSum: 0,
         refundsTopLine,
         refundItemsSum: refundsTopLine,
@@ -166,7 +190,8 @@ describe("A1 reconciliation — invariants (property-style)", () => {
         },
       };
       const rows = buildReconciliationRows(t);
-      const glRefundsRow = rows[2];
+      // GL refunds row index shifted from 2 → 4 in cluster-PR item 3.
+      const glRefundsRow = rows[4];
       expect(glRefundsRow.label).toMatch(/GL refunds/);
       expect(glRefundsRow.expected).toBe(-refundsTopLine);
       expect(glRefundsRow.actual).toBe(-refundsTopLine);
