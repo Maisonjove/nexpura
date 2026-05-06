@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTemplateById } from "@/lib/templates/data";
@@ -35,6 +36,18 @@ import {
  *   This page intentionally renders only the template body — no admin
  *   bar, no "Use this template" link, no breadcrumb. The iframe modal
  *   in TemplateGalleryClient owns the close + use-this controls.
+ *
+ * Cache Components shape:
+ *   Sync top-level export → <Suspense> → async body that awaits the
+ *   `params` promise. Same canonical pattern used by /embed/[tenantId]
+ *   and /[subdomain]/* . Without this split, awaiting `params` at the
+ *   page top level pulls dynamic data through the root layout's
+ *   client-component chain (LiveRegionProvider → PWAProvider) before
+ *   any Suspense boundary, and the cacheComponents prerender pipeline
+ *   fails with "Uncached data was accessed outside of <Suspense>".
+ *   Unlike the (app) version of this route, the (public) group has no
+ *   layout-level Suspense above us, so the page itself must provide
+ *   the boundary.
  */
 
 type Props = {
@@ -54,8 +67,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TemplateEmbedPreviewPage({ params }: Props) {
-  const { id } = await params;
+export default function TemplateEmbedPreviewPage({ params }: Props) {
+  return (
+    <Suspense fallback={null}>
+      <TemplateEmbedBody paramsPromise={params} />
+    </Suspense>
+  );
+}
+
+async function TemplateEmbedBody({
+  paramsPromise,
+}: {
+  paramsPromise: Promise<{ id: string }>;
+}) {
+  const { id } = await paramsPromise;
   const template = getTemplateById(id);
   if (!template) notFound();
 
