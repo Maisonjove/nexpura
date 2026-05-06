@@ -91,8 +91,8 @@ async function CustomersBody({
         ]}
       />
 
-      <Suspense key={`kpis:${tenantId}`} fallback={<KpiStripSkeleton />}>
-        <CustomerKpis tenantId={tenantId} />
+      <Suspense key={`kpis:${tenantId}:${userId ?? "review"}`} fallback={<KpiStripSkeleton />}>
+        <CustomerKpis tenantId={tenantId} userId={userId} isReviewMode={isReviewMode} />
       </Suspense>
 
       {/* Brief 2 §9 — quick-action card grids removed. The most common
@@ -138,12 +138,57 @@ async function CustomersBody({
 
 // ─── KPI strip (server) ───────────────────────────────────────────────────
 
-async function CustomerKpis({ tenantId }: { tenantId: string }) {
+async function CustomerKpis({
+  tenantId,
+  userId,
+  isReviewMode,
+}: {
+  tenantId: string;
+  userId: string | null;
+  isReviewMode: boolean;
+}) {
   const admin = createAdminClient();
 
   const now = new Date();
   const monthIdx = now.getMonth() + 1; // postgres months are 1-indexed
   const todayIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+  // Widget-vs-list scope parity (post-audit/widget-list-reconciliation,
+  // 2026-05-06). The list below (`CustomerRows`) resolves a per-user
+  // `visibleIds` set via `get_visible_customer_ids` for location-restricted
+  // staff. Pre-fix the KPIs ran tenant-wide so a restricted user saw
+  // "Total customers: 12" while the list rendered 1 (their own location's).
+  // Post-fix: KPIs intersect the same visibility window. Owner/manager
+  // (allowed_location_ids IS NULL) returns null here and we skip the
+  // intersection (full-tenant view, matching their list view).
+  // CONTRIBUTING.md §17.1 documents the canonical pattern.
+  let visibleIds: string[] | null = null;
+  if (!isReviewMode && userId) {
+    const { data: member } = await admin
+      .from("team_members")
+      .select("allowed_location_ids")
+      .eq("user_id", userId)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (member && member.allowed_location_ids !== null) {
+      const { data: ids } = await admin.rpc("get_visible_customer_ids", {
+        p_user_id: userId,
+        p_tenant_id: tenantId,
+      });
+      visibleIds =
+        (ids as unknown as Array<string | { get_visible_customer_ids: string }> | null)
+          ?.map((r) => (typeof r === "string" ? r : r.get_visible_customer_ids)) ?? [];
+    }
+  }
+  const applyVisibility = <T,>(q: T): T => {
+    if (visibleIds === null) return q;
+    const ids = visibleIds.length === 0
+      // Empty scope — match nothing via impossible UUID. Symmetric with
+      // locationScopeFilter() empty-allowed case (location-read-scope.ts).
+      ? ["00000000-0000-0000-0000-000000000000"]
+      : visibleIds;
+    return (q as unknown as { in: (col: string, vals: string[]) => T }).in("id", ids);
+  };
 
   // Birthdays this month: filter by EXTRACT(MONTH FROM birthday).
   // PostgREST exposes this via the `extract.month` filter when the column is
@@ -157,20 +202,27 @@ async function CustomerKpis({ tenantId }: { tenantId: string }) {
     requests,
     birthdayCustomers,
   ] = await Promise.all([
-    admin
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null),
-    admin
-      .from("customers")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("is_vip", true)
-      .is("deleted_at", null),
+    applyVisibility(
+      admin
+        .from("customers")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .is("deleted_at", null)
+    ),
+    applyVisibility(
+      admin
+        .from("customers")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenantId)
+        .eq("is_vip", true)
+        .is("deleted_at", null)
+    ),
     // Follow-ups due — tasks with due_date <= today AND status != done.
     // Some tenants store these under `reminders` instead; we count tasks
-    // here since the dashboard does.
+    // here since the dashboard does. Tasks have no `location_id` column
+    // (schema check 2026-05-06) so they remain tenant-wide; documented as
+    // an explicit exception in §17.1. Visibility model for tasks is
+    // assigned_to-based, applied at the task list page.
     admin
       .from("tasks")
       .select("id", { count: "exact", head: true })
@@ -186,12 +238,14 @@ async function CustomerKpis({ tenantId }: { tenantId: string }) {
       .not("status", "in", '("closed","converted","cancelled")'),
     // Birthdays this month — pull birthdays and filter client-side. The
     // customers table is unlikely to be huge for any single tenant.
-    admin
-      .from("customers")
-      .select("birthday")
-      .eq("tenant_id", tenantId)
-      .not("birthday", "is", null)
-      .is("deleted_at", null),
+    applyVisibility(
+      admin
+        .from("customers")
+        .select("id, birthday")
+        .eq("tenant_id", tenantId)
+        .not("birthday", "is", null)
+        .is("deleted_at", null)
+    ),
   ]);
 
   const birthdaysThisMonth = (birthdayCustomers.data ?? []).filter((c) => {

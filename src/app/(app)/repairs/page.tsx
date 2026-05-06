@@ -65,17 +65,6 @@ async function RepairsBody({
 
   const admin = createAdminClient();
 
-  const statsPromise = admin
-    .from("tenant_dashboard_stats")
-    .select("repairs_stage_counts, repairs_overdue_count, repairs_hot_rows, computed_at")
-    .eq("tenant_id", tenantId)
-    .maybeSingle();
-
-  let rawRepairs: unknown[] | null = null;
-  let statsResult: Awaited<typeof statsPromise>;
-  const authPromise = isReviewMode ? Promise.resolve(null) : getAuthContext();
-  let auth: Awaited<ReturnType<typeof getAuthContext>> | null;
-
   // Location-scope filter for location-restricted users. All-access
   // users (owner/manager with null allowed_location_ids) get null and
   // the filter is skipped. See src/lib/location-read-scope.ts.
@@ -83,6 +72,41 @@ async function RepairsBody({
   const locationFilter = !isReviewMode && userId
     ? await locationScopeFilter(userId, tenantId)
     : null;
+
+  // Widget-vs-list scope parity (post-audit/widget-list-reconciliation,
+  // 2026-05-06). `tenant_dashboard_stats.repairs_stage_counts` and
+  // `repairs_overdue_count` are precomputed tenant-wide aggregates.
+  // Reading them while the LIST below applies locationFilter caused
+  // the QA finding: stage tabs showed "12 In Progress" while the list
+  // rendered 0 rows for a location-restricted user. For restricted
+  // users we skip the precomputed read entirely so the client falls
+  // back to local-computed counts over the scoped 200-row slice. The
+  // counts may underreport when a single location has >200 repairs,
+  // but underreport-with-honest-list beats overreport-with-empty-list.
+  // Tracked in CONTRIBUTING.md §17.1 as the canonical example.
+  type StatsResult = {
+    data:
+      | {
+          repairs_stage_counts: Record<string, number> | null;
+          repairs_overdue_count: number | null;
+          repairs_hot_rows: unknown[] | null;
+          computed_at: string;
+        }
+      | null;
+    error: unknown;
+  };
+  const statsPromise: Promise<StatsResult> = locationFilter
+    ? Promise.resolve({ data: null, error: null })
+    : (admin
+        .from("tenant_dashboard_stats")
+        .select("repairs_stage_counts, repairs_overdue_count, repairs_hot_rows, computed_at")
+        .eq("tenant_id", tenantId)
+        .maybeSingle() as unknown as Promise<StatsResult>);
+
+  let rawRepairs: unknown[] | null = null;
+  let statsResult: StatsResult;
+  const authPromise = isReviewMode ? Promise.resolve(null) : getAuthContext();
+  let auth: Awaited<ReturnType<typeof getAuthContext>> | null;
 
   if (q) {
     // W2-004: quote user input so `.`, `,`, `(`, `)`, `*` can't escape.

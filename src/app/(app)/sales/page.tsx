@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTH_HEADERS } from "@/lib/cached-auth";
 import logger from "@/lib/logger";
 import { flushSentry } from "@/lib/sentry-flush";
+import { locationScopeFilter } from "@/lib/location-read-scope";
 import { getSalesPage } from "./sales-actions";
 import { SALES_LIST_PAGE_SIZE } from "./sales-types";
 import SalesHubClient from "./SalesHubClient";
@@ -62,6 +63,26 @@ async function SalesHubBody() {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
+  // Widget-vs-list scope parity (CONTRIBUTING.md §17.1, post-audit
+  // 2026-05-06). Pre-fix: KPI aggregations were tenant-only — a
+  // location-restricted user saw cross-location totals on the strip
+  // while the list below honoured locationScopeFilter. That's both a
+  // mismatch (Total: $2,750 / List: "No sales yet") and a leak (the
+  // KPI revealed sales rolled up from locations the user can't access).
+  // Post-fix: every KPI here uses the same scope helper as getSalesPage.
+  // Quotes have no `location_id` column so they remain tenant-wide;
+  // documented as the explicit exception in §17.1.
+  const scopeOrFilter = userId
+    ? await locationScopeFilter(userId, tenantId)
+    : null;
+  const applyScope = <T,>(q: T): T => {
+    if (!scopeOrFilter) return q;
+    // PostgrestFilterBuilder.or returns the same builder type. The cast
+    // is purely structural — we don't widen the type beyond what the
+    // builder already exposes.
+    return (q as unknown as { or: (s: string) => T }).or(scopeOrFilter);
+  };
+
   // Fire all KPI queries in parallel. Counts use { head: true, count: 'exact' }
   // for cheap row-count reads. Aggregates pull `total` and sum client-side
   // since PostgREST doesn't expose a SUM helper directly without an RPC.
@@ -77,39 +98,41 @@ async function SalesHubBody() {
     quotesResult,
     laybysResult,
   ] = await Promise.all([
-    admin
+    applyScope(admin
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .gte("sale_date", startOfToday),
-    admin
+      .gte("sale_date", startOfToday)),
+    applyScope(admin
       .from("sales")
       .select("total")
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .gte("sale_date", startOfMonth),
+      .gte("sale_date", startOfMonth)),
     // Outstanding invoices — sum of `amount_due` for unpaid statuses.
     // Mirrors src/app/(app)/invoices/page.tsx aggregation. `deleted_at is
     // null` is implicit there but explicit here for safety.
-    admin
+    applyScope(admin
       .from("invoices")
       .select("amount_due")
       .eq("tenant_id", tenantId)
       .in("status", ["unpaid", "partial", "overdue"])
-      .is("deleted_at", null),
+      .is("deleted_at", null)),
     // Open quotes = anything not yet converted/rejected/expired.
+    // The quotes table has no location_id column (verified 2026-05-06);
+    // remains tenant-wide. Documented exception in §17.1.
     admin
       .from("quotes")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId)
       .not("status", "in", '("converted","rejected","expired","cancelled","void")'),
-    admin
+    applyScope(admin
       .from("sales")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId)
       .is("deleted_at", null)
-      .eq("status", "layby"),
+      .eq("status", "layby")),
   ]);
 
   // C-02: per-result error check + telemetry. An error here used to vanish
