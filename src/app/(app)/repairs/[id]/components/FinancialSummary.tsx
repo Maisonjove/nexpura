@@ -114,7 +114,7 @@ export default function FinancialSummary({
             balanceDue > 0 && (
               <button
                 onClick={onRecordPayment}
-                className="w-full py-2.5 bg-amber-700 text-white text-sm font-semibold rounded-lg hover:bg-amber-800 transition-colors"
+                className="w-full py-2.5 bg-nexpura-bronze text-white text-sm font-semibold rounded-lg hover:bg-nexpura-bronze-hover transition-colors"
               >
                 Record Payment
               </button>
@@ -123,7 +123,7 @@ export default function FinancialSummary({
             <button
               onClick={onGenerateInvoice}
               disabled={isPending}
-              className="w-full py-2.5 bg-stone-900 text-white text-sm font-semibold rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-50"
+              className="w-full py-2.5 bg-nexpura-bronze text-white text-sm font-semibold rounded-lg hover:bg-nexpura-bronze-hover transition-colors disabled:opacity-50"
             >
               Generate Invoice
             </button>

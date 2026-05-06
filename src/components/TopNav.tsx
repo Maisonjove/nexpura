@@ -264,16 +264,16 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
 
         {/* Center nav links with dropdowns — desktop */}
         <div className="hidden lg:flex items-center gap-1">
-          {/* Intake — primary global CTA. Per Kaitlyn's 2026-05-02 brief
-              (Section 2.1) this is no longer an amber nav link but a
-              charcoal-filled button so it reads as the dominant action. */}
-          <Link
-            href={prefix + '/intake'}
-            className="inline-flex items-center gap-1.5 mr-2 px-4 py-2 rounded-lg text-[0.9375rem] font-medium bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 transition-colors"
-          >
-            <span className="text-base leading-none">+</span>
-            <span>Intake</span>
-          </Link>
+          {/* Intake — primary global CTA. Hidden on customer detail pages. */}
+          {!/\/customers\/[0-9a-f-]{36}/.test(pathname) && (
+            <Link
+              href={prefix + '/intake'}
+              className="inline-flex items-center gap-1.5 mr-2 px-4 py-2 rounded-lg text-[0.9375rem] font-medium bg-nexpura-bronze text-white hover:bg-nexpura-bronze-hover transition-colors"
+            >
+              <span className="text-base leading-none">+</span>
+              <span>Intake</span>
+            </Link>
+          )}
           {NAV_ITEMS.map((item) => (
             <NavDropdown key={item.label} item={item} pathname={pathname} prefix={prefix} />
           ))}
@@ -371,7 +371,7 @@ export default function TopNav({ user, tenantName, tenantSlug }: TopNavProps) {
           {/* Primary CTA: New Intake (mobile) */}
           <Link
             href={prefix + '/intake'}
-            className="block text-[0.9375rem] font-medium py-3 px-4 mb-3 rounded-xl bg-nexpura-charcoal text-white hover:bg-nexpura-charcoal-700 transition-colors"
+            className="block text-[0.9375rem] font-medium py-3 px-4 mb-3 rounded-xl bg-nexpura-bronze text-white hover:bg-nexpura-bronze-hover transition-colors"
           >
             + New Intake
           </Link>

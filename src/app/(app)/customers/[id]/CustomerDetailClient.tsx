@@ -270,7 +270,7 @@ export default function CustomerDetailClient({
         {!readOnly && (
           <div className="flex gap-3">
             <button onClick={() => setShowArchiveModal(true)} className="px-4 py-2 text-sm font-medium border border-red-100 text-red-600 rounded-xl hover:bg-red-50 transition-colors">Archive</button>
-            <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-nexpura-charcoal text-white rounded-xl hover:bg-nexpura-charcoal-700 transition-shadow shadow-sm">Edit Profile</Link>
+            <Link href={`/customers/${customer.id}/edit`} className="px-4 py-2 text-sm font-medium bg-nexpura-bronze text-white rounded-xl hover:bg-nexpura-bronze-hover transition-colors shadow-sm">Edit Profile</Link>
           </div>
         )}
       </div>
@@ -991,7 +991,7 @@ export default function CustomerDetailClient({
                     className="w-full h-32 p-4 rounded-2xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-nexpura-bronze resize-none text-sm"
                   />
                   <div className="flex justify-end">
-                    <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-nexpura-charcoal text-white rounded-xl font-bold disabled:opacity-50 text-sm">
+                    <button disabled={noteSubmitting || !newNote.trim()} className="px-6 py-2.5 bg-nexpura-bronze text-white rounded-xl font-bold disabled:opacity-50 text-sm hover:bg-nexpura-bronze-hover transition-colors">
                       Save Note
                     </button>
                   </div>

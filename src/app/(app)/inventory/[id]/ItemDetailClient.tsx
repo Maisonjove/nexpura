@@ -6,6 +6,7 @@ import StockAdjustModal from "./StockAdjustModal";
 import PrintTagModal from "./PrintTagModal";
 import { archiveInventoryItem } from "../actions";
 import { formatCurrency } from "@/lib/format-currency";
+import { EmptyState } from "@/components/EmptyState";
 
 interface Movement {
   id: string;
@@ -77,27 +78,27 @@ const MOVEMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 const MOVEMENT_COLORS: Record<string, string> = {
-  purchase: "text-green-600 bg-green-50",
-  sale: "text-amber-700 bg-stone-50",
-  adjustment: "text-amber-600 bg-amber-50",
-  return: "text-stone-700 bg-stone-100",
-  damage: "text-red-600 bg-red-50",
-  transfer: "text-gray-600 bg-gray-50",
+  purchase: "text-green-700 bg-green-50 border border-green-100",
+  sale: "text-nexpura-bronze bg-[#8B7355]/10 border border-[#8B7355]/20",
+  adjustment: "text-amber-700 bg-amber-50 border border-amber-100",
+  return: "text-stone-600 bg-stone-100 border border-stone-200",
+  damage: "text-red-600 bg-red-50 border border-red-100",
+  transfer: "text-blue-600 bg-blue-50 border border-blue-100",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-50 text-green-700 border border-green-200",
-  inactive: "bg-gray-50 text-gray-600 border border-gray-200",
-  sold: "bg-stone-100 text-stone-700 border border-stone-200",
+  inactive: "bg-stone-100 text-stone-500 border border-stone-200",
+  sold: "bg-stone-100 text-stone-600 border border-stone-200",
   consignment: "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
 function SpecRow({ label, value }: { label: string; value: string | number | null | undefined }) {
   if (!value && value !== 0) return null;
   return (
-    <div className="flex justify-between py-2 border-b border-stone-100 last:border-0">
+    <div className="flex justify-between py-2.5 border-b border-stone-100 last:border-0">
       <span className="text-sm text-stone-500">{label}</span>
-      <span className="text-sm font-medium text-stone-900 capitalize">{String(value)}</span>
+      <span className="text-sm font-medium text-stone-800 capitalize">{String(value)}</span>
     </div>
   );
 }
@@ -156,10 +157,13 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowArchiveConfirm(false)} />
           <div className="relative bg-white rounded-2xl border border-stone-200 shadow-xl w-full max-w-sm p-6">
-            <h3 className="font-semibold text-lg font-semibold text-stone-900 mb-2">Archive Item?</h3>
+            <h3 className="text-lg font-semibold text-stone-900 mb-2">Archive Item?</h3>
             <p className="text-sm text-stone-500 mb-6">This item will be soft-deleted and hidden from your inventory. This cannot be easily undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowArchiveConfirm(false)} className="flex-1 py-2.5 text-sm font-medium text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className="flex-1 py-2.5 text-sm font-medium text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+              >
                 Cancel
               </button>
               <button
@@ -177,40 +181,39 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
       <div className="space-y-6">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-stone-500">
-          <Link href="/inventory" className="hover:text-amber-700 transition-colors">Inventory</Link>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
-          </svg>
-          <span className="text-stone-900 truncate max-w-[200px]">{item.name}</span>
+          <Link href="/inventory" className="hover:text-stone-700 transition-colors">Inventory</Link>
+          <span className="text-stone-300">/</span>
+          <span className="text-stone-700 font-medium truncate max-w-[220px]">{item.name}</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* Left column */}
-          <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
+          <div className="space-y-5">
+
+            {/* Header card */}
+            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
               <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                  <h1 className="font-semibold text-2xl font-semibold text-stone-900">{item.name}</h1>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl font-semibold text-stone-900 leading-tight">{item.name}</h1>
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {item.sku && (
-                      <span className="text-xs font-mono bg-stone-50 border border-stone-200 px-2 py-0.5 rounded text-stone-500">
-                        {item.sku}
+                      <span className="text-xs font-mono bg-stone-50 border border-stone-200 px-2.5 py-1 rounded-md text-stone-500 tracking-wider">
+                        SKU: {item.sku}
                       </span>
                     )}
                     {item.stock_categories && (
-                      <span className="text-xs bg-stone-100 text-amber-700 px-2 py-0.5 rounded">
+                      <span className="text-xs bg-[#8B7355]/10 text-nexpura-bronze border border-[#8B7355]/20 px-2.5 py-1 rounded-md font-medium">
                         {item.stock_categories.name}
                       </span>
                     )}
-                    <span className="text-xs bg-stone-50 border border-stone-200 text-stone-500 px-2 py-0.5 rounded capitalize">
+                    <span className="text-xs bg-stone-50 border border-stone-200 text-stone-600 px-2.5 py-1 rounded-md">
                       {ITEM_TYPE_LABELS[item.item_type] || item.item_type}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${STATUS_COLORS[item.status] || ""}`}>
+                    <span className={`text-xs px-2.5 py-1 rounded-md font-medium capitalize ${STATUS_COLORS[item.status] || "bg-stone-50 text-stone-600 border border-stone-200"}`}>
                       {item.status}
                     </span>
                     {item.is_featured && (
-                      <span className="text-xs bg-amber-700/10 text-amber-700 border border-amber-600/20 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-md flex items-center gap-1 font-medium">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
@@ -219,53 +222,58 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  {!readOnly && (
-                    <>
-                      <Link
-                        href={`/pos?item_id=${item.id}`}
-                        className="px-4 py-2 text-sm font-medium bg-amber-700 text-white rounded-lg hover:bg-[#7a6349] transition-colors flex items-center gap-1.5"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        Quick Sell
-                      </Link>
-                      <button
-                        onClick={() => setShowPrintTag(true)}
-                        className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1.5"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                        Print Tag
-                      </button>
-                      <Link
-                        href={`/inventory/${item.id}/edit`}
-                        className="px-4 py-2 text-sm font-medium text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => setShowArchiveConfirm(true)}
-                        className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                      >
-                        Archive
-                      </button>
-                    </>
-                  )}
-                </div>
+
+                {!readOnly && (
+                  <div className="flex gap-2 flex-wrap shrink-0">
+                    <Link
+                      href={`/pos?item_id=${item.id}`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-nexpura-bronze text-white rounded-lg hover:bg-nexpura-bronze-hover transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      Quick Sell
+                    </Link>
+                    <button
+                      onClick={() => setShowPrintTag(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                      </svg>
+                      Print Tag
+                    </button>
+                    <Link
+                      href={`/inventory/${item.id}/edit`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => setShowArchiveConfirm(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      </svg>
+                      Archive
+                    </button>
+                  </div>
+                )}
               </div>
 
               {item.description && (
-                <p className="mt-4 text-sm text-stone-500 border-t border-stone-200 pt-4">{item.description}</p>
+                <p className="mt-4 text-sm text-stone-500 leading-relaxed border-t border-stone-100 pt-4">{item.description}</p>
               )}
             </div>
 
             {/* Specifications */}
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-4">Specifications</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">
+            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
+              <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-4">Specifications</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
                 <div>
                   <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Metal</p>
                   <SpecRow label="Type" value={item.metal_type} />
@@ -281,8 +289,8 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                   <SpecRow label="Clarity" value={item.stone_clarity} />
                 </div>
                 {(item.ring_size || item.dimensions || item.barcode || item.jewellery_type) && (
-                  <div className="sm:col-span-2 mt-4">
-                    <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Other</p>
+                  <div className="sm:col-span-2 mt-5 pt-5 border-t border-stone-100">
+                    <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Details</p>
                     <SpecRow label="Jewellery Type" value={item.jewellery_type} />
                     <SpecRow label="Ring Size" value={item.ring_size} />
                     <SpecRow label="Dimensions" value={item.dimensions} />
@@ -291,7 +299,7 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                   </div>
                 )}
                 {(item.supplier_name || item.supplier_sku) && (
-                  <div className="sm:col-span-2 mt-4">
+                  <div className="sm:col-span-2 mt-5 pt-5 border-t border-stone-100">
                     <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-2">Supplier</p>
                     <SpecRow label="Name" value={item.supplier_name} />
                     <SpecRow label="SKU" value={item.supplier_sku} />
@@ -301,26 +309,34 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
             </div>
 
             {/* Stock Movement History */}
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <h2 className="font-semibold text-lg font-semibold text-stone-900 mb-4">Stock Movement History</h2>
+            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
+              <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-4">Stock Movement History</p>
               {movements.length === 0 ? (
-                <p className="text-sm text-stone-400 text-center py-6">No movements recorded yet</p>
+                <EmptyState
+                  icon={
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  }
+                  title="No movements recorded yet"
+                  description="Stock changes such as sales, adjustments, and returns will appear here."
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-stone-200">
-                        <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Date</th>
-                        <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Type</th>
-                        <th className="text-right pb-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Change</th>
-                        <th className="text-right pb-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Qty After</th>
-                        <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Notes</th>
-                        <th className="text-left pb-3 text-xs font-medium text-stone-500 uppercase tracking-wider">By</th>
+                      <tr className="border-b border-stone-100">
+                        <th className="text-left pb-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Date</th>
+                        <th className="text-left pb-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Type</th>
+                        <th className="text-right pb-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Change</th>
+                        <th className="text-right pb-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Qty After</th>
+                        <th className="text-left pb-3 text-xs font-medium text-stone-400 uppercase tracking-wider">Notes</th>
+                        <th className="text-left pb-3 text-xs font-medium text-stone-400 uppercase tracking-wider">By</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-platinum/50">
+                    <tbody className="divide-y divide-stone-50">
                       {movements.map((m) => (
-                        <tr key={m.id} className="hover:bg-stone-50/30 transition-colors">
+                        <tr key={m.id} className="hover:bg-stone-50/50 transition-colors">
                           <td className="py-3 text-stone-500 whitespace-nowrap">
                             {new Date(m.created_at).toLocaleDateString("en-GB", {
                               day: "numeric",
@@ -329,17 +345,17 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
                             })}
                           </td>
                           <td className="py-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${MOVEMENT_COLORS[m.movement_type] || "text-gray-600 bg-gray-50"}`}>
+                            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${MOVEMENT_COLORS[m.movement_type] || "text-stone-600 bg-stone-50 border border-stone-100"}`}>
                               {MOVEMENT_TYPE_LABELS[m.movement_type] || m.movement_type}
                             </span>
                           </td>
-                          <td className={`py-3 text-right font-semibold ${m.quantity_change > 0 ? "text-green-600" : "text-red-500"}`}>
+                          <td className={`py-3 text-right font-semibold tabular-nums ${m.quantity_change > 0 ? "text-green-600" : "text-red-500"}`}>
                             {m.quantity_change > 0 ? "+" : ""}{m.quantity_change}
                           </td>
-                          <td className="py-3 text-right text-stone-900 font-medium">{m.quantity_after}</td>
-                          <td className="py-3 text-stone-500 max-w-[200px] truncate">{m.notes || "—"}</td>
-                          <td className="py-3 text-stone-400 whitespace-nowrap">
-                            {m.users?.full_name || "—"}
+                          <td className="py-3 text-right text-stone-800 font-medium tabular-nums">{m.quantity_after}</td>
+                          <td className="py-3 text-stone-500 max-w-[180px] truncate">{m.notes || <span className="text-stone-300">—</span>}</td>
+                          <td className="py-3 text-stone-400 whitespace-nowrap text-xs">
+                            {m.users?.full_name || <span className="text-stone-300">—</span>}
                           </td>
                         </tr>
                       ))}
@@ -350,70 +366,76 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
             </div>
           </div>
 
-          {/* Right column — Stock panel */}
+          {/* Right sidebar */}
           <div className="space-y-4">
-            {/* Stock level */}
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Current Stock</p>
-              <p className={`font-semibold text-5xl font-semibold ${isLowStock && item.track_quantity ? "text-red-500" : "text-stone-900"}`}>
-                {item.quantity}
-              </p>
-              <p className="text-sm text-stone-400 mt-1">units in stock</p>
+
+            {/* Current Stock */}
+            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
+              <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-4">Current Stock</p>
+              <div className="flex items-end gap-2 mb-1">
+                <p className={`text-5xl font-semibold leading-none ${isLowStock && item.track_quantity ? "text-red-500" : "text-stone-900"}`}>
+                  {item.quantity}
+                </p>
+                <p className="text-sm text-stone-400 mb-1">units</p>
+              </div>
 
               {isLowStock && item.track_quantity && (
-                <div className="mt-3 flex items-center gap-2 bg-red-50 border border-red-100 text-red-600 text-xs px-3 py-2 rounded-lg">
+                <div className="mt-4 flex items-center gap-2 bg-amber-50 border border-amber-100 text-amber-700 text-xs px-3 py-2.5 rounded-lg">
                   <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  Low stock — reorder soon
+                  <span className="font-medium">Low stock — reorder soon</span>
                 </div>
               )}
 
               {!item.track_quantity && (
-                <p className="text-xs text-stone-400 mt-2">Quantity tracking disabled</p>
+                <p className="text-xs text-stone-400 mt-3">Quantity tracking disabled</p>
               )}
 
               {!readOnly && (
                 <Link
                   href={`/inventory/${item.id}/adjust`}
-                  className="w-full mt-4 py-2.5 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors block text-center"
+                  className="mt-5 w-full py-2.5 bg-nexpura-bronze text-white text-sm font-medium rounded-lg hover:bg-nexpura-bronze-hover transition-colors flex items-center justify-center gap-2"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                  </svg>
                   Adjust Stock
                 </Link>
               )}
             </div>
 
             {/* Pricing */}
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-4">Pricing</p>
+            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
+              <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-4">Pricing</p>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-stone-500">Cost</span>
-                  <span className="text-sm font-medium text-stone-900">
-                    {item.cost_price != null ? formatCurrency(item.cost_price, currency) : "—"}
+                  <span className="text-sm font-medium text-stone-700">
+                    {item.cost_price != null ? formatCurrency(item.cost_price, currency) : <span className="text-stone-300">—</span>}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-stone-500">Wholesale</span>
-                  <span className="text-sm font-medium text-stone-900">
-                    {item.wholesale_price != null ? formatCurrency(item.wholesale_price, currency) : "—"}
+                  <span className="text-sm font-medium text-stone-700">
+                    {item.wholesale_price != null ? formatCurrency(item.wholesale_price, currency) : <span className="text-stone-300">—</span>}
                   </span>
                 </div>
-                <div className="flex justify-between items-center border-t border-stone-200 pt-3">
-                  <span className="text-sm font-medium text-stone-900">Retail</span>
-                  <span className="font-semibold text-lg font-semibold text-stone-900">
+                <div className="flex justify-between items-center border-t border-stone-100 pt-3 mt-1">
+                  <span className="text-sm font-semibold text-stone-900">Retail</span>
+                  <span className="text-lg font-semibold text-stone-900">
                     {formatCurrency(item.retail_price, currency)}
                   </span>
                 </div>
                 {margin !== null && (
-                  <div className={`flex justify-between items-center px-3 py-2 rounded-lg ${
+                  <div className={`flex justify-between items-center px-3 py-2 rounded-lg mt-1 ${
                     parseFloat(margin) >= 50
                       ? "bg-green-50"
                       : parseFloat(margin) >= 25
                       ? "bg-amber-50"
                       : "bg-red-50"
                   }`}>
-                    <span className="text-sm text-stone-500">Margin</span>
+                    <span className="text-xs text-stone-500 font-medium uppercase tracking-wide">Margin</span>
                     <span className={`text-sm font-semibold ${
                       parseFloat(margin) >= 50 ? "text-green-700" : parseFloat(margin) >= 25 ? "text-amber-700" : "text-red-600"
                     }`}>
@@ -426,30 +448,30 @@ export default function ItemDetailClient({ item, movements, tenantName = "Nexpur
 
             {/* Quick actions */}
             {!readOnly && (
-              <div className="bg-white rounded-xl border border-stone-200 p-6">
-                <p className="text-xs font-medium text-stone-500 uppercase tracking-wider mb-3">Actions</p>
+              <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-wider mb-3">Actions</p>
                 <div className="space-y-2">
                   <button
                     onClick={() => setShowPrintTag(true)}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
                     Print Stock Tag
                   </button>
                   <Link
                     href={`/inventory/${item.id}/edit`}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-900 rounded-lg hover:bg-stone-900 hover:text-white transition-colors font-medium"
+                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-stone-700 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     Edit Item Details
                   </Link>
                   <button
                     onClick={() => setShowArchiveConfirm(true)}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                    className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-red-600 border border-red-100 rounded-lg hover:bg-red-50 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />

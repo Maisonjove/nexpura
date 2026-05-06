@@ -78,31 +78,31 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
   );
 
   return (
-    <section className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-      <header className="px-5 py-4 sm:px-6 sm:py-5 border-b border-stone-100 bg-gradient-to-b from-white to-stone-50/50">
-        <h2 className="text-sm font-semibold text-stone-900">
+    <section className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
+      <header className="px-5 py-5 sm:px-8 sm:py-6 border-b border-stone-100">
+        <h2 className="font-serif text-lg text-stone-900 tracking-tight">
           Request an update or amendment
         </h2>
-        <p className="text-xs text-stone-500 mt-1">
-          Message {businessName} directly about this {label}. They'll see it in their workflow and reply here.
+        <p className="text-xs text-stone-500 mt-1.5 font-sans leading-relaxed">
+          Message {businessName} directly about this {label}. They&apos;ll see it in their workflow and reply here.
         </p>
       </header>
 
-      <div className="max-h-[480px] overflow-y-auto px-5 py-5 sm:px-6 space-y-4 bg-stone-50/30">
+      <div className="max-h-[480px] overflow-y-auto px-5 py-5 sm:px-8 space-y-4 bg-[#F6F3EE]/40">
         {empty ? (
-          <div className="text-center py-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-3">
-              <svg className="w-5 h-5 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center py-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-4">
+              <svg className="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
             </div>
-            <p className="text-sm text-stone-600 font-medium">No messages yet</p>
-            <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
-              You can send an amendment request, ask a question, or get an update. Examples:
+            <p className="text-sm text-stone-700 font-medium font-sans">No messages yet</p>
+            <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto font-sans leading-relaxed">
+              Send an amendment request, ask a question, or request an update. Examples:
             </p>
-            <ul className="mt-3 space-y-1 text-xs text-stone-500">
+            <ul className="mt-3 space-y-1 text-xs text-stone-400 font-sans">
               {exampleRequests.map((ex) => (
-                <li key={ex} className="italic">"{ex}"</li>
+                <li key={ex} className="italic">&ldquo;{ex}&rdquo;</li>
               ))}
             </ul>
           </div>
@@ -118,21 +118,21 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
               >
                 <div className={`max-w-[85%] sm:max-w-[75%] ${isCustomer ? "items-end" : "items-start"} flex flex-col`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[0.6875rem] font-semibold text-stone-500 uppercase tracking-wide">
+                    <span className="text-[0.6875rem] font-semibold text-stone-400 uppercase tracking-wide font-sans">
                       {displayName}
                     </span>
                     {isAmendment && (
-                      <span className="inline-block text-[0.625rem] font-semibold tracking-wide uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                        Amendment request
+                      <span className="inline-block text-[0.625rem] font-semibold tracking-wide uppercase bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200 font-sans">
+                        Amendment
                       </span>
                     )}
-                    <span className="text-[0.6875rem] text-stone-400">{formatTime(m.created_at)}</span>
+                    <span className="text-[0.6875rem] text-stone-400 font-sans">{formatTime(m.created_at)}</span>
                   </div>
                   <div
-                    className={`px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words leading-relaxed ${
+                    className={`px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap break-words leading-relaxed font-sans ${
                       isCustomer
-                        ? "bg-amber-700 text-white rounded-br-md"
-                        : "bg-white text-stone-900 border border-stone-200 rounded-bl-md"
+                        ? "bg-nexpura-bronze text-white rounded-br-md"
+                        : "bg-white text-stone-900 border border-stone-200 rounded-bl-md shadow-sm"
                     }`}
                   >
                     {m.body}
@@ -149,7 +149,7 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
           e.preventDefault();
           onSend();
         }}
-        className="border-t border-stone-100 px-5 py-4 sm:px-6 sm:py-5 bg-white space-y-3"
+        className="border-t border-stone-100 px-5 py-5 sm:px-8 sm:py-6 bg-white space-y-4"
       >
         <textarea
           value={body}
@@ -162,31 +162,31 @@ export default function TrackingMessages({ trackingId, initialMessages, orderTyp
           rows={3}
           maxLength={4000}
           disabled={sending}
-          className="w-full px-3 py-2.5 text-sm text-stone-900 placeholder-stone-400 bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600/30 focus:border-amber-600 resize-none disabled:opacity-60"
+          className="w-full px-4 py-3 text-sm text-stone-900 placeholder-stone-400 bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/25 focus:border-nexpura-bronze resize-none disabled:opacity-60 font-sans transition-colors"
         />
         {error && (
           <p
             role="alert"
-            className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg"
+            className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2.5 rounded-lg font-sans"
           >
             {error}
           </p>
         )}
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <label className="inline-flex items-center gap-2 text-xs text-stone-600 cursor-pointer select-none">
+          <label className="inline-flex items-center gap-2.5 text-xs text-stone-500 cursor-pointer select-none font-sans">
             <input
               type="checkbox"
               checked={isAmendment}
               onChange={(e) => setIsAmendment(e.target.checked)}
               disabled={sending}
-              className="w-3.5 h-3.5 rounded border-stone-300 text-amber-700 focus:ring-amber-600/30"
+              className="w-3.5 h-3.5 rounded border-stone-300 text-nexpura-bronze focus:ring-nexpura-bronze/25 accent-nexpura-bronze"
             />
             This is an amendment request
           </label>
           <button
             type="submit"
             disabled={sending || !body.trim()}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-amber-700 text-white text-sm font-medium rounded-lg hover:bg-amber-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-nexpura-bronze text-white text-sm font-medium rounded-lg hover:bg-nexpura-bronze-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-sans"
           >
             {sending ? (
               <>

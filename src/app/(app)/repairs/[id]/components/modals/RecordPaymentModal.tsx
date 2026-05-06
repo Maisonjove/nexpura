@@ -47,7 +47,7 @@ export default function RecordPaymentModal({
               onChange={e => setPaymentAmount(e.target.value)} 
               placeholder="0.00" 
               step="0.01" 
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-700" 
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze" 
             />
           </div>
           <div>
@@ -55,7 +55,7 @@ export default function RecordPaymentModal({
             <select 
               value={paymentMethod} 
               onChange={e => setPaymentMethod(e.target.value)} 
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-700"
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze"
             >
               {PAYMENT_METHODS.map(m => (
                 <option key={m} value={m}>{m.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
@@ -68,14 +68,14 @@ export default function RecordPaymentModal({
               value={paymentNotes} 
               onChange={e => setPaymentNotes(e.target.value)} 
               placeholder="e.g. Deposit received" 
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-700" 
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze" 
             />
           </div>
           {formError && <p className="text-sm text-red-500">{formError}</p>}
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={onClose} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-          <button onClick={onSubmit} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
+          <button onClick={onSubmit} disabled={isPending} className="flex-1 bg-nexpura-bronze text-white text-sm font-medium py-2.5 rounded-lg hover:bg-nexpura-bronze-hover disabled:opacity-50">
             {isPending ? "Recording…" : "Record Payment"}
           </button>
         </div>

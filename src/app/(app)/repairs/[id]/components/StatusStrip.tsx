@@ -32,7 +32,7 @@ function StatusChip({ invoice, repair, currency }: { invoice: Invoice | null; re
   }
   if (invoice.amount_paid >= invoice.total && invoice.total > 0) {
     return (
-      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-stone-900 text-white">
+      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
         Fully Paid
       </span>
     );
@@ -136,7 +136,7 @@ export default function StatusStrip({
               type="button"
               onClick={handleCreateInvoice}
               disabled={isPending}
-              className="text-xs bg-amber-600 hover:bg-amber-700 text-white border border-amber-700 px-3 py-1 rounded-full font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="text-xs bg-nexpura-bronze hover:bg-nexpura-bronze-hover text-white border border-[#7A6347] px-3 py-1 rounded-full font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               title="Generate a draft invoice for this repair"
             >
               {isPending ? "Creating invoice…" : "📄 Create Invoice"}

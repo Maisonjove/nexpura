@@ -261,28 +261,31 @@ async function TrackingPage({ params }: PageProps) {
 
 function TrackOrderNotFound({ trackingId }: { trackingId: string }) {
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-8 max-w-md w-full text-center">
-        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z" />
+    <div className="min-h-screen bg-gradient-to-b from-[#F6F3EE] to-white flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-10 max-w-md w-full text-center">
+        <div className="w-14 h-14 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z" />
           </svg>
         </div>
-        <h1 className="text-xl font-semibold text-stone-900 mb-2">Order Not Found</h1>
-        <p className="text-stone-500 mb-2">
+        <h1 className="font-serif text-2xl text-stone-900 mb-3 tracking-tight">Order Not Found</h1>
+        <p className="text-stone-500 text-sm leading-relaxed mb-2 font-sans">
           We couldn&apos;t find an order with the tracking ID{" "}
-          <span className="font-mono text-stone-700">{trackingId}</span>.
+          <span className="font-mono text-stone-700 bg-stone-50 px-1.5 py-0.5 rounded border border-stone-200 text-xs">{trackingId}</span>.
         </p>
-        <p className="text-stone-500 mb-6 text-sm">
-          Please double-check the ID in your email or text from the store. Tracking IDs look like{" "}
-          <span className="font-mono text-stone-700">RPR-XXXXXXXX</span> or{" "}
-          <span className="font-mono text-stone-700">BSP-XXXXXXXX</span>.
+        <p className="text-stone-400 mb-8 text-sm font-sans leading-relaxed">
+          Please double-check the ID in your email or message from the store. Tracking IDs look like{" "}
+          <span className="font-mono text-stone-500">RPR-XXXXXXXX</span> or{" "}
+          <span className="font-mono text-stone-500">BSP-XXXXXXXX</span>.
         </p>
         <a
           href="/"
-          className="inline-block text-amber-700 hover:text-amber-800 font-medium"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-nexpura-bronze hover:text-nexpura-bronze-hover transition-colors font-sans"
         >
-          Go to Nexpura →
+          Go to Nexpura
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </a>
       </div>
     </div>

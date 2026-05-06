@@ -43,7 +43,7 @@ export default function AddManualItemModal({
               value={manualDesc} 
               onChange={e => setManualDesc(e.target.value)} 
               placeholder="e.g. Ring resizing labour" 
-              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-700 focus:ring-1 focus:ring-amber-700" 
+              className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze focus:ring-1 focus:ring-nexpura-bronze" 
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -54,7 +54,7 @@ export default function AddManualItemModal({
                 value={manualQty} 
                 onChange={e => setManualQty(e.target.value)} 
                 min="1" 
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-700" 
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze" 
               />
             </div>
             <div>
@@ -65,7 +65,7 @@ export default function AddManualItemModal({
                 onChange={e => setManualPrice(e.target.value)} 
                 placeholder="0.00" 
                 step="0.01" 
-                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-amber-700" 
+                className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-nexpura-bronze" 
               />
             </div>
           </div>
@@ -73,7 +73,7 @@ export default function AddManualItemModal({
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={onClose} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-          <button onClick={onSubmit} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
+          <button onClick={onSubmit} disabled={isPending} className="flex-1 bg-nexpura-bronze text-white text-sm font-medium py-2.5 rounded-lg hover:bg-nexpura-bronze-hover disabled:opacity-50">
             {isPending ? "Adding…" : "Add Item"}
           </button>
         </div>

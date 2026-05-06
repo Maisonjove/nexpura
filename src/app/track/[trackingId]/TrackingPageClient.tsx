@@ -47,41 +47,26 @@ interface OrderData {
 // none allowed by the constraint, so any in-flight job hit
 // `findIndex` → -1 → bar rendered 0% width regardless of progress.
 const REPAIR_STAGES = [
-  { key: "intake", label: "Received", icon: "📥" },
-  { key: "assessed", label: "Assessed", icon: "🔍" },
-  { key: "quoted", label: "Quoted", icon: "💬" },
-  { key: "approved", label: "Approved", icon: "👍" },
-  { key: "in_progress", label: "In Progress", icon: "⚒️" },
-  { key: "ready", label: "Ready", icon: "🎉" },
-  { key: "collected", label: "Collected", icon: "🏠" },
+  { key: "intake", label: "Received" },
+  { key: "assessed", label: "Assessed" },
+  { key: "quoted", label: "Quoted" },
+  { key: "approved", label: "Approved" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "ready", label: "Ready" },
+  { key: "collected", label: "Collected" },
 ];
 
 const BESPOKE_STAGES = [
-  { key: "enquiry", label: "Enquiry", icon: "💬" },
-  { key: "consultation", label: "Consultation", icon: "🤝" },
-  { key: "design", label: "Design", icon: "✏️" },
-  { key: "design_review", label: "Design Review", icon: "👀" },
-  { key: "quoted", label: "Quoted", icon: "📋" },
-  { key: "approved", label: "Approved", icon: "👍" },
-  { key: "in_progress", label: "In Production", icon: "⚒️" },
-  { key: "ready", label: "Ready", icon: "🎉" },
-  { key: "collected", label: "Collected", icon: "🏠" },
+  { key: "enquiry", label: "Enquiry" },
+  { key: "consultation", label: "Consultation" },
+  { key: "design", label: "Design" },
+  { key: "design_review", label: "Review" },
+  { key: "quoted", label: "Quoted" },
+  { key: "approved", label: "Approved" },
+  { key: "in_progress", label: "Production" },
+  { key: "ready", label: "Ready" },
+  { key: "collected", label: "Collected" },
 ];
-
-function getStatusColor(status: string): string {
-  const lowerStatus = status.toLowerCase().replace(/\s+/g, "_");
-  
-  // Green - completed/ready
-  if (["ready", "collected", "completed", "approved", "quality_check"].includes(lowerStatus)) {
-    return "bg-emerald-500";
-  }
-  // Amber - in progress
-  if (["in_progress", "production", "cad", "design", "assessed"].includes(lowerStatus)) {
-    return "bg-amber-500";
-  }
-  // Default - pending/early stages
-  return "bg-stone-400";
-}
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-GB", {
@@ -115,6 +100,17 @@ function getFileIcon(fileType: string | null): string {
   return "📄";
 }
 
+function getStatusBadgeClasses(status: string): string {
+  const k = status.toLowerCase().replace(/\s+/g, "_");
+  if (["ready", "collected", "completed"].includes(k)) {
+    return "text-emerald-700 bg-emerald-50 border border-emerald-200";
+  }
+  if (["in_progress", "assessed", "design"].includes(k)) {
+    return "text-nexpura-bronze bg-amber-50 border border-amber-200";
+  }
+  return "text-stone-600 bg-stone-100 border border-stone-200";
+}
+
 export default function TrackingPageClient({
   order,
   initialMessages,
@@ -123,7 +119,7 @@ export default function TrackingPageClient({
   initialMessages: OrderMessage[];
 }) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   const stages = order.order_type === "repair" ? REPAIR_STAGES : BESPOKE_STAGES;
   const currentStageIndex = stages.findIndex(
     (s) => s.key === order.status.toLowerCase().replace(/\s+/g, "_")
@@ -140,39 +136,44 @@ export default function TrackingPageClient({
   );
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-gradient-to-b from-[#F6F3EE] to-white">
       {/* Header */}
-      <header className="bg-white border-b border-stone-200">
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-stone-200/60">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
+          <div className="flex items-center justify-between gap-4">
+            {/* Jeweller identity */}
+            <div className="flex items-center gap-4">
               {order.tenant.logo_url ? (
                 <Image
                   src={order.tenant.logo_url}
                   alt={order.tenant.business_name}
-                  width={40}
-                  height={40}
-                  className="rounded-lg"
+                  width={44}
+                  height={44}
+                  className="rounded-xl border border-stone-200 shadow-sm object-cover"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-lg bg-stone-900 flex items-center justify-center">
-                  <span className="text-white font-semibold text-lg">
+                <div className="w-11 h-11 rounded-xl bg-stone-900 flex items-center justify-center shadow-sm flex-shrink-0">
+                  <span className="font-serif text-white text-xl font-light">
                     {order.tenant.business_name.charAt(0)}
                   </span>
                 </div>
               )}
               <div>
-                <h1 className="font-semibold text-stone-900">
+                <h1 className="font-serif text-xl text-stone-900 leading-tight tracking-tight">
                   {order.tenant.business_name}
                 </h1>
-                <p className="text-xs text-stone-500">Order Tracking</p>
+                <p className="text-xs text-stone-400 mt-0.5 font-sans tracking-wide uppercase">
+                  Order Tracking
+                </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-stone-500 uppercase tracking-wider">
+
+            {/* Tracking ID */}
+            <div className="text-right flex-shrink-0">
+              <p className="text-[0.6875rem] text-stone-400 uppercase tracking-widest font-sans mb-1">
                 Tracking ID
               </p>
-              <p className="font-mono font-semibold text-stone-900">
+              <p className="font-mono text-sm font-semibold text-stone-800 bg-stone-100 px-3 py-1 rounded-lg border border-stone-200">
                 {order.tracking_id}
               </p>
             </div>
@@ -180,108 +181,121 @@ export default function TrackingPageClient({
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-5">
         {/* Order Summary Card */}
-        <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-          <div className="flex items-start justify-between mb-6">
+        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+          {/* Type badge + status */}
+          <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <span
-                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-[0.6875rem] font-medium border ${
                   order.order_type === "repair"
-                    ? "text-blue-700 bg-blue-50 border-blue-200"
-                    : "text-purple-700 bg-purple-50 border-purple-200"
+                    ? "text-stone-600 bg-stone-50 border-stone-200"
+                    : "text-stone-600 bg-stone-50 border-stone-200"
                 }`}
               >
-                {order.order_type === "repair" ? "🔧 Repair" : "✨ Bespoke"}
+                {order.order_type === "repair" ? "Repair" : "Bespoke"}
               </span>
-              <h2 className="mt-3 text-xl font-semibold text-stone-900">
-                {order.item_type || "Jewellery Item"}
-              </h2>
-              <p className="mt-1 text-stone-600 text-sm">
-                {order.item_description}
-              </p>
             </div>
-            <div
-              className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                order.status.toLowerCase() === "ready" ||
-                order.status.toLowerCase() === "collected"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-amber-50 text-amber-700 border border-amber-200"
-              }`}
-            >
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClasses(order.status)}`}>
               {formatStatus(order.status)}
-            </div>
+            </span>
           </div>
 
-          {/* Key Info Grid */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-stone-100">
-            <div>
-              <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">
-                Order Date
-              </p>
-              <p className="font-medium text-stone-900">
-                {formatDate(order.created_at)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-stone-500 uppercase tracking-wider mb-1">
-                Est. Completion
-              </p>
-              <p className="font-medium text-stone-900">
-                {order.estimated_completion_date
-                  ? formatDate(order.estimated_completion_date)
-                  : "To be confirmed"}
-              </p>
+          {/* Item heading */}
+          <h2 className="font-serif text-2xl sm:text-3xl text-stone-900 leading-snug tracking-tight mb-2">
+            {order.item_type || "Jewellery Item"}
+          </h2>
+          <p className="text-stone-500 text-sm leading-relaxed font-sans">
+            {order.item_description}
+          </p>
+
+          {/* Divider */}
+          <div className="border-t border-stone-100 mt-6 pt-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-[0.6875rem] text-stone-400 uppercase tracking-widest font-sans mb-1.5">
+                  Order Date
+                </p>
+                <p className="text-sm font-medium text-stone-900">
+                  {formatDate(order.created_at)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[0.6875rem] text-stone-400 uppercase tracking-widest font-sans mb-1.5">
+                  Est. Completion
+                </p>
+                <p className="text-sm font-medium text-stone-900">
+                  {order.estimated_completion_date
+                    ? formatDate(order.estimated_completion_date)
+                    : "To be confirmed"}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Progress Tracker */}
-        <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-          <h3 className="text-sm font-semibold text-stone-900 mb-6">
+        <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+          <h3 className="font-serif text-lg text-stone-900 mb-7 tracking-tight">
             Progress
           </h3>
-          
-          {/* Progress Bar */}
-          <div className="relative mb-8">
-            <div className="absolute top-4 left-0 right-0 h-0.5 bg-stone-200" />
+
+          {/* Progress bar track */}
+          <div className="relative mb-2">
+            {/* Track line */}
+            <div className="absolute top-4 left-[calc(100/(stages.length*2)%)] right-[calc(100/(stages.length*2)%)] h-px bg-stone-200" />
             <div
-              className="absolute top-4 left-0 h-0.5 bg-emerald-500 transition-all duration-500"
+              className="absolute top-4 left-0 h-px bg-nexpura-bronze transition-all duration-700"
               style={{
-                width: `${Math.max(0, (currentStageIndex / (stages.length - 1)) * 100)}%`,
+                width: currentStageIndex <= 0
+                  ? "0%"
+                  : `${(currentStageIndex / (stages.length - 1)) * 100}%`,
               }}
             />
-            
+
             <div className="relative flex justify-between">
               {stages.map((stage, index) => {
-                const isCompleted = index <= currentStageIndex;
+                const isCompleted = index < currentStageIndex;
                 const isCurrent = index === currentStageIndex;
-                
+                const isPending = index > currentStageIndex;
+
                 return (
                   <div
                     key={stage.key}
                     className="flex flex-col items-center"
                     style={{ width: `${100 / stages.length}%` }}
                   >
+                    {/* Dot */}
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                         isCurrent
-                          ? "bg-emerald-500 text-white ring-4 ring-emerald-100"
+                          ? "bg-nexpura-bronze text-white shadow-md ring-4 ring-nexpura-bronze/15"
                           : isCompleted
-                          ? "bg-emerald-500 text-white"
-                          : "bg-stone-200 text-stone-400"
+                          ? "bg-nexpura-bronze text-white"
+                          : "bg-stone-100 border border-stone-200"
                       }`}
                     >
-                      {isCompleted ? "✓" : stage.icon}
+                      {isCompleted ? (
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : isCurrent ? (
+                        <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-stone-300" />
+                      )}
                     </div>
+
+                    {/* Label */}
                     <span
-                      className={`mt-2 text-xs text-center ${
+                      className={`mt-2.5 text-[0.6875rem] text-center leading-tight font-sans ${
                         isCurrent
                           ? "font-semibold text-stone-900"
                           : isCompleted
-                          ? "text-stone-600"
-                          : "text-stone-400"
-                      }`}
+                          ? "text-stone-500"
+                          : "text-stone-300"
+                      } ${isPending ? "" : ""}`}
                     >
                       {stage.label}
                     </span>
@@ -294,20 +308,20 @@ export default function TrackingPageClient({
 
         {/* Attachments */}
         {order.attachments.length > 0 && (
-          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-stone-900 mb-4">
+          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+            <h3 className="font-serif text-lg text-stone-900 mb-5 tracking-tight">
               Attachments
             </h3>
 
             {/* Image Gallery */}
             {imageAttachments.length > 0 && (
               <div className="mb-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2.5">
                   {imageAttachments.map((attachment) => (
                     <button
                       key={attachment.id}
                       onClick={() => setSelectedImage(attachment.file_url)}
-                      className="aspect-square rounded-lg overflow-hidden bg-stone-100 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-stone-900 focus:ring-offset-2"
+                      className="aspect-square rounded-xl overflow-hidden bg-stone-100 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-nexpura-bronze/40 focus:ring-offset-2"
                     >
                       <Image
                         src={attachment.file_url}
@@ -322,13 +336,11 @@ export default function TrackingPageClient({
               </div>
             )}
 
-            {/* Videos — bespoke jewellers commonly upload CAD design walkthroughs.
-                Rendered inline with native controls (download disabled) so the
-                customer can review without leaving the page. */}
+            {/* Videos */}
             {videoAttachments.length > 0 && (
               <div className="mb-4 space-y-3">
                 {videoAttachments.map((attachment) => (
-                  <div key={attachment.id} className="rounded-lg overflow-hidden bg-stone-900">
+                  <div key={attachment.id} className="rounded-xl overflow-hidden bg-stone-900">
                     <video
                       src={attachment.file_url}
                       controls
@@ -360,11 +372,9 @@ export default function TrackingPageClient({
                     href={attachment.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-stone-50 hover:bg-stone-100 transition-colors"
+                    className="flex items-center gap-3 p-3.5 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-100 transition-colors"
                   >
-                    <span className="text-xl">
-                      {getFileIcon(attachment.file_type)}
-                    </span>
+                    <span className="text-xl">{getFileIcon(attachment.file_type)}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-stone-900 truncate">
                         {attachment.file_name}
@@ -375,18 +385,8 @@ export default function TrackingPageClient({
                         </p>
                       )}
                     </div>
-                    <svg
-                      className="w-5 h-5 text-stone-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                      />
+                    <svg className="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                   </a>
                 ))}
@@ -397,34 +397,36 @@ export default function TrackingPageClient({
 
         {/* Status History Timeline */}
         {order.status_history.length > 0 && (
-          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-stone-900 mb-4">
+          <div className="bg-white rounded-2xl border border-stone-100 shadow-sm p-6 sm:p-8">
+            <h3 className="font-serif text-lg text-stone-900 mb-6 tracking-tight">
               Activity Timeline
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-0">
               {order.status_history.map((entry, index) => (
                 <div key={entry.id} className="flex gap-4">
-                  <div className="flex flex-col items-center">
+                  {/* Timeline spine */}
+                  <div className="flex flex-col items-center pt-0.5">
                     <div
-                      className={`w-3 h-3 rounded-full ${
-                        index === 0 ? getStatusColor(entry.status) : "bg-stone-300"
+                      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1 ${
+                        index === 0 ? "bg-nexpura-bronze" : "bg-stone-300"
                       }`}
                     />
                     {index < order.status_history.length - 1 && (
-                      <div className="w-px flex-1 bg-stone-200 my-1" />
+                      <div className="w-px flex-1 bg-stone-100 my-2" />
                     )}
                   </div>
-                  <div className="flex-1 pb-4">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-stone-900">
+
+                  <div className={`flex-1 ${index < order.status_history.length - 1 ? "pb-6" : "pb-0"}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold text-stone-900 font-sans leading-snug">
                         {formatStatus(entry.status)}
                       </p>
-                      <time className="text-xs text-stone-500">
+                      <time className="text-[0.6875rem] text-stone-400 font-sans flex-shrink-0 mt-0.5">
                         {formatDateTime(entry.changed_at)}
                       </time>
                     </div>
                     {entry.notes && (
-                      <p className="mt-1 text-sm text-stone-600">
+                      <p className="mt-1.5 text-sm text-stone-500 leading-relaxed font-sans">
                         {entry.notes}
                       </p>
                     )}
@@ -435,9 +437,7 @@ export default function TrackingPageClient({
           </div>
         )}
 
-        {/* Bespoke-only: customer Approve / Decline on the design.
-            Repairs don't have an approval workflow — the field stays
-            null and the card never renders. */}
+        {/* Bespoke-only: customer Approve / Decline on the design. */}
         {order.order_type === "bespoke" && (
           <BespokeDecisionCard
             trackingId={order.tracking_id}
@@ -448,7 +448,7 @@ export default function TrackingPageClient({
           />
         )}
 
-        {/* Customer ↔ Jeweller messaging on this order */}
+        {/* Customer ↔ Jeweller messaging */}
         <TrackingMessages
           trackingId={order.tracking_id}
           orderType={order.order_type}
@@ -457,22 +457,23 @@ export default function TrackingPageClient({
         />
 
         {/* Footer */}
-        <div className="text-center py-8">
-          <p className="text-xs text-stone-400">
-            Questions about your order? Contact{" "}
+        <div className="text-center py-10">
+          <p className="text-xs text-stone-400 font-sans">
+            Questions? Contact{" "}
             <span className="font-medium text-stone-600">
               {order.tenant.business_name}
-            </span>
+            </span>{" "}
+            directly.
           </p>
-          <p className="mt-4 text-xs text-stone-400">
-            Powered by{" "}
+          <div className="mt-4 inline-flex items-center gap-1.5">
+            <span className="text-xs text-stone-300">Powered by</span>
             <a
               href="https://nexpura.com"
-              className="font-semibold text-stone-900 hover:underline"
+              className="text-xs font-semibold text-stone-400 hover:text-nexpura-bronze transition-colors font-sans"
             >
               Nexpura
             </a>
-          </p>
+          </div>
         </div>
       </main>
 
@@ -484,21 +485,11 @@ export default function TrackingPageClient({
         >
           <button
             onClick={() => setSelectedImage(null)}
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+            className="absolute top-4 right-4 text-white/70 hover:text-white p-2 transition-colors"
             aria-label="Close"
           >
-            <svg
-              className="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
           <Image
@@ -506,7 +497,7 @@ export default function TrackingPageClient({
             alt="Full size"
             width={1200}
             height={1200}
-            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            className="max-w-full max-h-[90vh] object-contain rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

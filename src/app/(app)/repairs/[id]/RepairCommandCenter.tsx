@@ -527,7 +527,7 @@ export default function RepairCommandCenter({
                   {(() => {
                     const label = { draft: "Draft", unpaid: "Sent", partial: "Partial", paid: "Paid", voided: "Voided", overdue: "Overdue" }[invoice.status] || invoice.status;
                     return (
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-stone-900 text-white" : invoice.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-stone-100 text-stone-600"}`}>
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${invoice.status === "paid" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : invoice.status === "partial" ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-stone-100 text-stone-600"}`}>
                         {label}
                       </span>
                     );
@@ -617,7 +617,7 @@ export default function RepairCommandCenter({
               ) : !readOnly ? (
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-stone-400 flex-1">No invoice generated yet.</p>
-                  <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">
+                  <button onClick={handleGenerateInvoice} disabled={isPending} className="text-xs font-medium bg-nexpura-bronze text-white px-3 py-1.5 rounded-lg hover:bg-nexpura-bronze-hover transition-colors disabled:opacity-50">
                     Generate Invoice
                   </button>
                 </div>

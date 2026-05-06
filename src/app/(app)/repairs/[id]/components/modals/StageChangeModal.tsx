@@ -29,7 +29,7 @@ export default function StageChangeModal({
         </p>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 border border-stone-200 text-stone-700 text-sm font-medium py-2.5 rounded-lg hover:bg-stone-50">Cancel</button>
-          <button onClick={onConfirm} disabled={isPending} className="flex-1 bg-stone-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-stone-800 disabled:opacity-50">
+          <button onClick={onConfirm} disabled={isPending} className="flex-1 bg-nexpura-bronze text-white text-sm font-medium py-2.5 rounded-lg hover:bg-nexpura-bronze-hover disabled:opacity-50">
             {isPending ? "Updating…" : "Confirm"}
           </button>
         </div>

@@ -40,9 +40,9 @@ export default function StageTimeline({
                 <div
                   className={`w-7 h-7 rounded-full flex-shrink-0 z-10 flex items-center justify-center ${
                     isPast
-                      ? "bg-amber-700"
+                      ? "bg-nexpura-bronze"
                       : isCurrent
-                      ? "bg-amber-600 ring-4 ring-amber-100"
+                      ? "bg-nexpura-bronze ring-4 ring-stone-200"
                       : "bg-white border-2 border-stone-200"
                   }`}
                 >
@@ -75,7 +75,7 @@ export default function StageTimeline({
                   {s.label}
                 </span>
                 {isCurrent && (
-                  <span className="ml-auto text-xs bg-amber-600 text-white px-2 py-0.5 rounded-full">
+                  <span className="ml-auto text-xs bg-nexpura-bronze text-white px-2 py-0.5 rounded-full">
                     Current
                   </span>
                 )}

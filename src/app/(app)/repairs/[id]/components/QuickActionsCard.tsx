@@ -52,7 +52,7 @@ export default function QuickActionsCard({
           <button
             onClick={onMarkFullyPaid}
             disabled={isPending}
-            className="w-full text-sm font-medium bg-stone-900 text-white px-4 py-2.5 rounded-lg hover:bg-stone-800 transition-colors text-left disabled:opacity-50"
+            className="w-full text-sm font-medium bg-nexpura-bronze text-white px-4 py-2.5 rounded-lg hover:bg-nexpura-bronze-hover transition-colors text-left disabled:opacity-50"
           >
             ✓ Mark Fully Paid ({fmt(balanceDue, currency)})
           </button>
@@ -65,7 +65,7 @@ export default function QuickActionsCard({
           <button
             onClick={onGenerateInvoice}
             disabled={isPending}
-            className="w-full text-sm font-medium bg-amber-600 text-white px-4 py-2.5 rounded-lg hover:bg-amber-700 transition-colors text-left disabled:opacity-50"
+            className="w-full text-sm font-medium bg-nexpura-bronze text-white px-4 py-2.5 rounded-lg hover:bg-nexpura-bronze-hover transition-colors text-left disabled:opacity-50"
           >
             📄 Generate Invoice
           </button>
