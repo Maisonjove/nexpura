@@ -1340,3 +1340,56 @@ boolean return CAN be correct in scripts that don't have a dry-run
 mode at all. ESLint can't reliably distinguish. Manual checklist
 (above) + unit-test discipline are the gates. If this bug class
 recurs despite the checklist, revisit.
+
+## §17.1.1 — Dashboard scope parity (sibling to PR #203)
+
+Sibling fix to §17.1. The dashboard widget path
+(`src/app/(app)/dashboard/actions.ts`) had the same scope-bypass
+shape PR #203 closed for /sales, /customers, /repairs:
+
+  - The in-file `addLocFilter` helper honoured ONLY the user-explicit
+    picker (the `locationIds` arg flowing in from
+    `getFilterLocationIds()` in `DashboardWrapper.tsx`).
+  - It never read `team_members.allowed_location_ids`, so a restricted
+    team member whose picker was "all" saw tenant-wide widgets.
+  - Both compounding paths leaked: the precomputed
+    `tenant_dashboard_stats` fast-path (in `readPrecomputedStats`
+    AND in `/api/dashboard/stats/route.ts`) AND the live-query
+    `fetchDashboardStats` path.
+
+### Canonical scope — picker ∩ allowed_location_ids
+
+The dashboard accepts a user-explicit picker. The picker is intersected
+with `team_members.allowed_location_ids` (the same source-of-truth
+`getUserLocationIds` reads for /sales, /repairs, /inventory). The
+intersection is the "effective" set the widget queries see.
+
+  - **all-access** (owner/manager OR `allowed_location_ids` = null):
+    picker passes through unchanged.
+  - **restricted, picker = "all"**: scope to `allowedIds`.
+  - **restricted, picker selects subset**: drop any picker IDs outside
+    `allowedIds`; if no overlap, "match nothing" via the
+    impossible-UUID pattern (symmetric with `locationScopeFilter`).
+
+### Precomputed fast path
+
+The precomputed `tenant_dashboard_stats` row is tenant-wide.
+Consuming it for a location-restricted user is a leak. The fast path
+is gated on `scope.all` in both `readPrecomputedStats`
+(server-action) AND the `/api/dashboard/stats` Route Handler.
+Restricted users always go through the live `fetchDashboardStats`
+path so `addLocFilter` applies the OR-NULL hygiene.
+
+### Callsites covered (§17.1 list extension)
+
+  - `src/app/(app)/dashboard/actions.ts` — `getDashboardStats`,
+    `readPrecomputedStats`, `fetchDashboardStats` + `addLocFilter`.
+  - `src/app/api/dashboard/stats/route.ts` — the SWR-targeted Route
+    Handler twin.
+
+### Contract test
+
+`src/lib/__tests__/dashboard-loc-filter-contract.test.ts` — 9
+source-grep assertions pinning the helper imports, intersection
+logic, OR-NULL hygiene, impossible-UUID match-nothing, and the
+precomputed-skip on both fast-path callers.
