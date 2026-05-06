@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { changeTenantPlan, changeTenantStatus, assignFreeForever, forcePaidGracePeriod, saveTenantAdminNotes, deleteTenant, extendTrial } from "@/app/(admin)/actions";
+import { adminGenerateRecoveryLink } from "./actions";
 import { useRouter } from "next/navigation";
 
 interface TenantActionsProps {
@@ -41,6 +42,17 @@ export default function TenantActions({
   const [freeMsg, setFreeMsg] = useState("");
   const [notesMsg, setNotesMsg] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+
+  // Recovery-link hotfix state (PR #202).
+  // The link itself is held in component state for copy-paste only —
+  // it is intentionally NOT persisted (no localStorage / no router
+  // search-params), and it clears on email-input change so the admin
+  // never accidentally hands out a stale link tied to the wrong user.
+  const [recoveryEmail, setRecoveryEmail] = useState(ownerEmail ?? "");
+  const [recoveryLink, setRecoveryLink] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
+  const [recoveryPending, startRecoveryTransition] = useTransition();
 
   const newTrialEnd = useMemo(() => {
     const d = new Date();
@@ -126,6 +138,39 @@ export default function TenantActions({
       }
       setTimeout(() => setNotesMsg(""), 3000);
     });
+  }
+
+  function handleGenerateRecoveryLink() {
+    setRecoveryError(null);
+    setRecoveryLink(null);
+    setRecoveryCopied(false);
+    startRecoveryTransition(async () => {
+      const res = await adminGenerateRecoveryLink({
+        targetEmail: recoveryEmail,
+        tenantId,
+      });
+      if (res.error) {
+        setRecoveryError(res.error);
+        return;
+      }
+      if (res.link) {
+        setRecoveryLink(res.link);
+      }
+    });
+  }
+
+  async function handleCopyRecoveryLink() {
+    if (!recoveryLink) return;
+    try {
+      await navigator.clipboard.writeText(recoveryLink);
+      setRecoveryCopied(true);
+      setTimeout(() => setRecoveryCopied(false), 2000);
+    } catch {
+      // Clipboard API can fail in non-secure contexts — fall back to
+      // selection so the admin can still cmd/ctrl-C manually.
+      const ta = document.getElementById("recovery-link-textarea") as HTMLTextAreaElement | null;
+      ta?.select();
+    }
   }
 
   function handleDelete() {
@@ -345,6 +390,61 @@ export default function TenantActions({
           <p className={`text-xs ${notesMsg.includes("Failed") ? "text-red-500" : "text-emerald-600"}`}>
             {notesMsg}
           </p>
+        )}
+      </div>
+
+      {/* Recovery link (PR #202 — prod hotfix while /auth/v1/recover 500s) */}
+      <div className="space-y-2 pt-2 border-t border-stone-200">
+        <label className="text-sm font-medium text-stone-600">Generate password reset link</label>
+        <p className="text-[11px] text-stone-500 leading-snug">
+          Use only when normal /forgot-password is broken. Link bypasses email delivery — share with the verified account holder via secure channel.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={recoveryEmail}
+            onChange={(e) => {
+              setRecoveryEmail(e.target.value);
+              // Clear any previously-generated link when the target
+              // email changes — never let a stale link drift onto a
+              // different account.
+              if (recoveryLink) setRecoveryLink(null);
+              if (recoveryError) setRecoveryError(null);
+            }}
+            placeholder="user@example.com"
+            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm text-stone-900 bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+          />
+          <button
+            onClick={handleGenerateRecoveryLink}
+            disabled={recoveryPending || !recoveryEmail.trim()}
+            className="px-4 py-2 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors disabled:opacity-60"
+          >
+            {recoveryPending ? "Generating…" : "Generate"}
+          </button>
+        </div>
+        {recoveryError && (
+          <p className="text-xs text-red-500">{recoveryError}</p>
+        )}
+        {recoveryLink && (
+          <div className="space-y-2">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-900 leading-snug">
+              ⚠️ This link bypasses email delivery. Use only when normal /forgot-password is broken. Treat the URL as a credential — only share with the verified account holder via secure channel.
+            </div>
+            <textarea
+              id="recovery-link-textarea"
+              value={recoveryLink}
+              readOnly
+              rows={4}
+              onFocus={(e) => e.currentTarget.select()}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-xs font-mono text-stone-900 bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-900/20 resize-none break-all"
+            />
+            <button
+              onClick={handleCopyRecoveryLink}
+              className="w-full px-3 py-2 border border-stone-200 text-stone-700 rounded-lg text-sm font-medium hover:bg-stone-50 transition-colors"
+            >
+              {recoveryCopied ? "✓ Copied" : "Copy link"}
+            </button>
+          </div>
         )}
       </div>
 
