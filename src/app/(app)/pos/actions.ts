@@ -152,203 +152,38 @@ export async function createPOSSale(
   const stockDeductions: { inventoryId: string; quantity: number; originalQty: number }[] = [];
 
   // Define transaction steps
+  //
+  // ─── C1 saga reorder (Desktop-Opus QA Round 2, 2026-05-06) ─────────────
+  // Stock deduction MUST run before any state-mutating step (sale insert,
+  // store-credit/voucher debits) so a sold-out item can't leave a phantom
+  // paid sale + a money-correctness gap. Previously this RPC ran AFTER
+  // the sale row was inserted as 'paid'; under concurrent terminal load
+  // a `insufficient_stock|<name>|<available>` raise from the RPC bubbled
+  // a red "couldn't be completed" banner to the cashier while the sale
+  // row was still mid-rollback (compensate sets status='voided', but the
+  // window of a phantom paid row exists, and any compensate failure
+  // leaves it permanently). Same blast-radius family as PR #199's C-01
+  // fake-refund guard. Half-fix-pair pattern (§13).
+  //
+  // pos_deduct_stock is already transactional (FOR UPDATE locks +
+  // whole-cart rollback on RAISE — see migration
+  // 20260424_pos_deduct_stock_rpc.sql), so running it first means: stock
+  // check fails → no sale row, no debits, no compensations needed.
+  // Stock-deducted-then-something-else-fails path is covered by the
+  // existing compensate which restores inventory.quantity in
+  // executeWithSafety's reverse-order rollback.
   const steps: TransactionStep[] = [
-    // Step 1: Deduct store credit if used. DB-side atomic function —
-    // SELECT FOR UPDATE + decrement in a single transaction. Replaces
-    // the prior optimistic compare-and-swap which could race under
-    // concurrent till usage and leave balance negative. See migration
-    // 20260421_atomic_store_credit_voucher.sql.
-    {
-      name: "deduct_store_credit",
-      execute: async () => {
-        if (!params.storeCreditAmount || params.storeCreditAmount <= 0) {
-          return { success: true, data: { skipped: true } };
-        }
-        if (!params.customerId) {
-          return { success: false, error: "Customer required for store credit" };
-        }
-        // Capture the original balance BEFORE the RPC so compensate can
-        // restore it if a later step fails.
-        const { data: pre } = await admin
-          .from("customers")
-          .select("store_credit")
-          .eq("id", params.customerId)
-          .eq("tenant_id", tenantId)
-          .single();
-        storeCreditOriginal = pre?.store_credit ?? 0;
-
-        const { data: newBalance, error } = await admin.rpc("deduct_store_credit", {
-          p_customer_id: params.customerId,
-          p_tenant_id: tenantId,
-          p_amount: params.storeCreditAmount,
-        });
-        if (error) {
-          if (error.message.includes("insufficient_store_credit")) {
-            return { success: false, error: "Insufficient store credit balance" };
-          }
-          if (error.message.includes("customer_not_found")) {
-            return { success: false, error: "Customer not found" };
-          }
-          return { success: false, error: error.message };
-        }
-        storeCreditDeducted = true;
-        return { success: true, data: { newBalance } };
-      },
-      compensate: async () => {
-        if (storeCreditDeducted && params.customerId && storeCreditOriginal !== null) {
-          // Compensating rollback path. Caller is already handling
-          // a primary error; if rollback itself fails, log loudly
-          // but don't throw — that would mask the original failure
-          // and surface the rollback error instead. Operator can
-          // reconcile from the audit log.
-          const { error: rollbackErr } = await admin
-            .from("customers")
-            .update({ store_credit: storeCreditOriginal })
-            .eq("id", params.customerId)
-            .eq("tenant_id", tenantId);
-          if (rollbackErr) {
-            logger.error("[pos/checkout] store-credit rollback failed", { customerId: params.customerId, err: rollbackErr });
-          }
-        }
-      },
-    },
-
-    // Step 2: Deduct voucher if used. Same DB-side atomic pattern.
-    // Prevents double-redemption races between concurrent POS terminals.
-    {
-      name: "deduct_voucher",
-      execute: async () => {
-        if (!params.voucherId || !params.voucherAmount || params.voucherAmount <= 0) {
-          return { success: true, data: { skipped: true } };
-        }
-        const { data: pre } = await admin
-          .from("gift_vouchers")
-          .select("balance, status")
-          .eq("id", params.voucherId)
-          .eq("tenant_id", tenantId)
-          .single();
-        voucherOriginalBalance = pre?.balance ?? 0;
-
-        const { error } = await admin.rpc("redeem_voucher", {
-          p_voucher_id: params.voucherId,
-          p_tenant_id: tenantId,
-          p_amount: params.voucherAmount,
-        });
-        if (error) {
-          if (error.message.includes("voucher_not_active")) {
-            return { success: false, error: "Voucher is not active" };
-          }
-          if (error.message.includes("insufficient_voucher_balance")) {
-            return { success: false, error: "Voucher balance is insufficient" };
-          }
-          if (error.message.includes("voucher_not_found")) {
-            return { success: false, error: "Voucher not found" };
-          }
-          return { success: false, error: error.message };
-        }
-        voucherDeducted = true;
-        return { success: true, data: {} };
-      },
-      compensate: async () => {
-        if (voucherDeducted && params.voucherId && voucherOriginalBalance !== null) {
-          // Compensating rollback — same policy as store-credit
-          // rollback above. Log on error; don't throw.
-          const { error: rollbackErr } = await admin
-            .from("gift_vouchers")
-            .update({ balance: voucherOriginalBalance, status: "active" })
-            .eq("id", params.voucherId)
-            .eq("tenant_id", tenantId);
-          if (rollbackErr) {
-            logger.error("[pos/checkout] voucher rollback failed", { voucherId: params.voucherId, err: rollbackErr });
-          }
-        }
-      },
-    },
-    
-    // Step 3: Create sale record
-    {
-      name: "create_sale",
-      execute: async () => {
-        const posLocationId = await resolvePOSLocationId(tenantId, userId);
-        const { data: sale, error } = await admin
-          .from("sales")
-          .insert({
-            tenant_id: tenantId,
-            location_id: posLocationId,
-            sale_number: saleNumber,
-            customer_id: params.customerId,
-            customer_name: params.customerName,
-            customer_email: params.customerEmail,
-            // W3-CRIT-04: store server-recomputed money, never params.*
-            subtotal: serverTotals.subtotal,
-            discount_amount: serverDiscount,
-            tax_amount: serverTotals.taxAmount,
-            total: serverTotals.total,
-            amount_paid: serverTotals.total,
-            payment_method: params.paymentMethod,
-            store_credit_amount: params.storeCreditAmount || 0,
-            status: "paid",
-            sold_by: userId,
-            sale_date: new Date().toISOString().split("T")[0],
-          })
-          .select("id")
-          .single();
-        
-        if (error || !sale) {
-          return { success: false, error: error?.message ?? "Failed to create sale" };
-        }
-        
-        saleId = sale.id;
-        return { success: true, data: { saleId: sale.id } };
-      },
-      compensate: async () => {
-        if (saleId) {
-          // Compensating void — same rollback-policy as above.
-          const { error: voidErr } = await admin
-            .from("sales")
-            .update({ status: "voided" })
-            .eq("id", saleId);
-          if (voidErr) {
-            logger.error("[pos/checkout] sale void rollback failed", { saleId, err: voidErr });
-          }
-        }
-      },
-    },
-
-    // Step 4: Create sale items
-    {
-      name: "create_sale_items",
-      execute: async () => {
-        if (!saleId || params.cart.length === 0) {
-          return { success: true, data: { skipped: true } };
-        }
-        
-        const { error } = await admin.from("sale_items").insert(
-          params.cart.map((item, idx) => ({
-            tenant_id: tenantId,
-            sale_id: saleId,
-            inventory_id: item.inventoryId,
-            description: item.name,
-            quantity: item.quantity,
-            unit_price: item.unitPrice,
-            // W3-CRIT-04: server-authoritative line_total, not client-supplied
-            line_total: serverTotals.lineTotals[idx],
-          }))
-        );
-        
-        if (error) {
-          return { success: false, error: error.message };
-        }
-        return { success: true };
-      },
-    },
-    
-    // Step 5: Deduct stock + log stock_movements in a single atomic RPC.
+    // Step 1: Deduct stock + log stock_movements in a single atomic RPC.
     // Replaces the 3–4 queries-per-item loop (SELECT, CAS UPDATE, retry,
     // INSERT stock_movement) with one Postgres round-trip that does
     // FOR UPDATE row-locks, decrements, inserts, and either succeeds
     // whole-cart or rolls back whole-cart (no partial deductions).
     // See migration 20260424_pos_deduct_stock_rpc.sql.
+    //
+    // POSITIONED FIRST (C1 fix): if any item is sold out the saga
+    // bails before any sale row, store-credit debit, or voucher
+    // redemption is written. The cashier's "sold out" banner is
+    // honest — the DB matches.
     //
     // If the migration hasn't landed yet (function missing / 42883) we
     // transparently fall back to the original per-item JS loop so POS
@@ -476,6 +311,196 @@ export async function createPOSSale(
             { count: rollbackFailures.length, failures: rollbackFailures },
           );
         }
+      },
+    },
+
+    // Step 2: Deduct store credit if used. DB-side atomic function —
+    // SELECT FOR UPDATE + decrement in a single transaction. Replaces
+    // the prior optimistic compare-and-swap which could race under
+    // concurrent till usage and leave balance negative. See migration
+    // 20260421_atomic_store_credit_voucher.sql.
+    {
+      name: "deduct_store_credit",
+      execute: async () => {
+        if (!params.storeCreditAmount || params.storeCreditAmount <= 0) {
+          return { success: true, data: { skipped: true } };
+        }
+        if (!params.customerId) {
+          return { success: false, error: "Customer required for store credit" };
+        }
+        // Capture the original balance BEFORE the RPC so compensate can
+        // restore it if a later step fails.
+        const { data: pre } = await admin
+          .from("customers")
+          .select("store_credit")
+          .eq("id", params.customerId)
+          .eq("tenant_id", tenantId)
+          .single();
+        storeCreditOriginal = pre?.store_credit ?? 0;
+
+        const { data: newBalance, error } = await admin.rpc("deduct_store_credit", {
+          p_customer_id: params.customerId,
+          p_tenant_id: tenantId,
+          p_amount: params.storeCreditAmount,
+        });
+        if (error) {
+          if (error.message.includes("insufficient_store_credit")) {
+            return { success: false, error: "Insufficient store credit balance" };
+          }
+          if (error.message.includes("customer_not_found")) {
+            return { success: false, error: "Customer not found" };
+          }
+          return { success: false, error: error.message };
+        }
+        storeCreditDeducted = true;
+        return { success: true, data: { newBalance } };
+      },
+      compensate: async () => {
+        if (storeCreditDeducted && params.customerId && storeCreditOriginal !== null) {
+          // Compensating rollback path. Caller is already handling
+          // a primary error; if rollback itself fails, log loudly
+          // but don't throw — that would mask the original failure
+          // and surface the rollback error instead. Operator can
+          // reconcile from the audit log.
+          const { error: rollbackErr } = await admin
+            .from("customers")
+            .update({ store_credit: storeCreditOriginal })
+            .eq("id", params.customerId)
+            .eq("tenant_id", tenantId);
+          if (rollbackErr) {
+            logger.error("[pos/checkout] store-credit rollback failed", { customerId: params.customerId, err: rollbackErr });
+          }
+        }
+      },
+    },
+
+    // Step 3: Deduct voucher if used. Same DB-side atomic pattern.
+    // Prevents double-redemption races between concurrent POS terminals.
+    {
+      name: "deduct_voucher",
+      execute: async () => {
+        if (!params.voucherId || !params.voucherAmount || params.voucherAmount <= 0) {
+          return { success: true, data: { skipped: true } };
+        }
+        const { data: pre } = await admin
+          .from("gift_vouchers")
+          .select("balance, status")
+          .eq("id", params.voucherId)
+          .eq("tenant_id", tenantId)
+          .single();
+        voucherOriginalBalance = pre?.balance ?? 0;
+
+        const { error } = await admin.rpc("redeem_voucher", {
+          p_voucher_id: params.voucherId,
+          p_tenant_id: tenantId,
+          p_amount: params.voucherAmount,
+        });
+        if (error) {
+          if (error.message.includes("voucher_not_active")) {
+            return { success: false, error: "Voucher is not active" };
+          }
+          if (error.message.includes("insufficient_voucher_balance")) {
+            return { success: false, error: "Voucher balance is insufficient" };
+          }
+          if (error.message.includes("voucher_not_found")) {
+            return { success: false, error: "Voucher not found" };
+          }
+          return { success: false, error: error.message };
+        }
+        voucherDeducted = true;
+        return { success: true, data: {} };
+      },
+      compensate: async () => {
+        if (voucherDeducted && params.voucherId && voucherOriginalBalance !== null) {
+          // Compensating rollback — same policy as store-credit
+          // rollback above. Log on error; don't throw.
+          const { error: rollbackErr } = await admin
+            .from("gift_vouchers")
+            .update({ balance: voucherOriginalBalance, status: "active" })
+            .eq("id", params.voucherId)
+            .eq("tenant_id", tenantId);
+          if (rollbackErr) {
+            logger.error("[pos/checkout] voucher rollback failed", { voucherId: params.voucherId, err: rollbackErr });
+          }
+        }
+      },
+    },
+    
+    // Step 4: Create sale record
+    {
+      name: "create_sale",
+      execute: async () => {
+        const posLocationId = await resolvePOSLocationId(tenantId, userId);
+        const { data: sale, error } = await admin
+          .from("sales")
+          .insert({
+            tenant_id: tenantId,
+            location_id: posLocationId,
+            sale_number: saleNumber,
+            customer_id: params.customerId,
+            customer_name: params.customerName,
+            customer_email: params.customerEmail,
+            // W3-CRIT-04: store server-recomputed money, never params.*
+            subtotal: serverTotals.subtotal,
+            discount_amount: serverDiscount,
+            tax_amount: serverTotals.taxAmount,
+            total: serverTotals.total,
+            amount_paid: serverTotals.total,
+            payment_method: params.paymentMethod,
+            store_credit_amount: params.storeCreditAmount || 0,
+            status: "paid",
+            sold_by: userId,
+            sale_date: new Date().toISOString().split("T")[0],
+          })
+          .select("id")
+          .single();
+        
+        if (error || !sale) {
+          return { success: false, error: error?.message ?? "Failed to create sale" };
+        }
+        
+        saleId = sale.id;
+        return { success: true, data: { saleId: sale.id } };
+      },
+      compensate: async () => {
+        if (saleId) {
+          // Compensating void — same rollback-policy as above.
+          const { error: voidErr } = await admin
+            .from("sales")
+            .update({ status: "voided" })
+            .eq("id", saleId);
+          if (voidErr) {
+            logger.error("[pos/checkout] sale void rollback failed", { saleId, err: voidErr });
+          }
+        }
+      },
+    },
+
+    // Step 5: Create sale items
+    {
+      name: "create_sale_items",
+      execute: async () => {
+        if (!saleId || params.cart.length === 0) {
+          return { success: true, data: { skipped: true } };
+        }
+        
+        const { error } = await admin.from("sale_items").insert(
+          params.cart.map((item, idx) => ({
+            tenant_id: tenantId,
+            sale_id: saleId,
+            inventory_id: item.inventoryId,
+            description: item.name,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            // W3-CRIT-04: server-authoritative line_total, not client-supplied
+            line_total: serverTotals.lineTotals[idx],
+          }))
+        );
+        
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        return { success: true };
       },
     },
 
