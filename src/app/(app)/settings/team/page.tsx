@@ -18,12 +18,16 @@ export default async function TeamPage() {
   const admin = createAdminClient();
   const { data: userData } = await admin
     .from("users")
-    .select("role, tenants(business_mode)")
+    .select("role, tenants(business_mode, require_2fa_for_staff)")
     .eq("id", user.id)
     .single();
 
   const currentUserRole = userData?.role ?? "staff";
-  const businessMode = (userData?.tenants as { business_mode?: string } | null)?.business_mode || 'full';
+  const tenantsField = userData?.tenants as
+    | { business_mode?: string; require_2fa_for_staff?: boolean | null }
+    | null;
+  const businessMode = tenantsField?.business_mode || 'full';
+  const require2faForStaff = tenantsField?.require_2fa_for_staff === true;
 
   const [{ data: members }, { data: tasks }, { data: locations }] = await Promise.all([
     admin
@@ -59,6 +63,7 @@ export default async function TeamPage() {
       maxUsers={maxUsers}
       isAtLimit={isAtLimit}
       locations={locations ?? []}
+      require2faForStaff={require2faForStaff}
     />
   );
 }

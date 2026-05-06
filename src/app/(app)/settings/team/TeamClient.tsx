@@ -9,6 +9,7 @@ import {
   createTask,
   updateTaskStatus,
   updateTeamMemberNotifications,
+  setTenantRequire2faForStaff,
 } from "./actions";
 // H-04a: invite-creation lives on /settings/roles/actions (the canonical
 // that sends the email + enforces the plan-limit). Imported here directly
@@ -76,6 +77,9 @@ interface Props {
   maxUsers?: number | null;
   isAtLimit?: boolean;
   locations?: Location[];
+  // M-05 (retest): current tenant value for require_2fa_for_staff. Owner-
+  // only toggle below uses this as initial state. Staff see no toggle.
+  require2faForStaff?: boolean;
 }
 
 const ROLE_COLOURS: Record<string, string> = {
@@ -137,6 +141,7 @@ export default function TeamClient({
   maxUsers,
   isAtLimit,
   locations = [],
+  require2faForStaff = false,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -152,6 +157,10 @@ export default function TeamClient({
   const [taskAssignee, setTaskAssignee] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [locationModalMember, setLocationModalMember] = useState<TeamMember | null>(null);
+  // M-05 (retest): owner-only 2FA-required toggle. Optimistic UI; rolls
+  // back on server error.
+  const [twoFaRequired, setTwoFaRequired] = useState(require2faForStaff);
+  const [twoFaSaving, setTwoFaSaving] = useState(false);
 
   const isOwner = currentUserRole === "owner";
   const hasMultipleLocations = locations.length > 1;
@@ -245,6 +254,25 @@ export default function TeamClient({
     });
   }
 
+  function handleToggle2faRequired(next: boolean) {
+    if (twoFaSaving) return;
+    const prev = twoFaRequired;
+    setTwoFaRequired(next); // optimistic
+    setTwoFaSaving(true);
+    startTransition(async () => {
+      const result = await setTenantRequire2faForStaff(next);
+      setTwoFaSaving(false);
+      if (result?.error) {
+        setTwoFaRequired(prev); // roll back
+        showMsg(`Error: ${result.error}`);
+      } else {
+        showMsg(next
+          ? "Staff must enrol 2FA on next sign-in."
+          : "2FA requirement removed for staff.");
+      }
+    });
+  }
+
   function handleResendInvite(memberId: string) {
     startTransition(async () => {
       const result = await resendInvite(memberId);
@@ -278,6 +306,47 @@ export default function TeamClient({
       {msg && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800">
           {msg}
+        </div>
+      )}
+
+      {/* M-05: tenant-level 2FA enforcement toggle (owner-only). */}
+      {isOwner && (
+        <div className="bg-white border border-stone-200 rounded-xl shadow-sm">
+          <div className="px-5 py-4 border-b border-stone-200">
+            <h2 className="text-base font-semibold text-stone-900">Security</h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Tenant-wide policies that affect every staff member.
+            </p>
+          </div>
+          <div className="px-5 py-4 flex items-start justify-between gap-6">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-stone-900">
+                Require 2FA for all staff
+              </p>
+              <p className="text-xs text-stone-500 mt-1">
+                When on, staff (non-owner) accounts without TOTP enrolled are
+                redirected to enrol on next sign-in. You (the owner) are
+                exempt — locking the owner out is a recovery problem.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={twoFaRequired}
+              aria-label="Require 2FA for all staff"
+              disabled={twoFaSaving || isPending}
+              onClick={() => handleToggle2faRequired(!twoFaRequired)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                twoFaRequired ? "bg-emerald-600" : "bg-stone-300"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  twoFaRequired ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       )}
 
