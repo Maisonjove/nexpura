@@ -75,7 +75,13 @@ export type AuditAction =
   | 'login'
   | 'logout'
   | 'stripe_connect_disconnect'
-  | 'stripe_connect_deauthorize_failed';
+  | 'stripe_connect_deauthorize_failed'
+  // A1 Day 2 (2026-05-06): manager PIN events for refund overrides.
+  | 'manager_pin_set'
+  | 'manager_pin_reset'
+  // A1 Day 1 (2026-05-06): data repairs (May Nexpura outlier
+  // rollback, future synthetic backfills with provenance metadata).
+  | 'data_repair';
 
 export type EntityType =
   | 'inventory'
