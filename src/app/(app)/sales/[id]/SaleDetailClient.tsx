@@ -172,6 +172,28 @@ export default function SaleDetailClient({ sale, items, initialInvoiceId, laybyP
 
   async function attemptRefund(managerPin?: string): Promise<void> {
     const result = await processRefund(buildRefundParams(managerPin));
+
+    // SUCCESS branch (v2 contract): processRefundV2 returns
+    // `{ id, refundNumber }` on success — NOT a redirect like the
+    // legacy action did. We must close the modal, clear refund form
+    // state, refresh the page, and navigate to the new refund detail.
+    // Round 4 Critical 1 (PR #200, merge ebcdb6a4): without this branch
+    // the modal stays open, cashier clicks again, server-side
+    // idempotency dedupes the refund but the audit_log fires per click
+    // and React error #419 storms.
+    if (result?.id) {
+      setShowRefundModal(false);
+      setRefundItems({});
+      setRefundReason("");
+      setRefundMethod("card");
+      setRefundNotes("");
+      setRefundError(null);
+      router.refresh();
+      router.push(`/refunds/${result.id}`);
+      return;
+    }
+
+    // No id, no error — defensive no-op (shouldn't happen with v2 RPC).
     if (!result?.error) return;
 
     // PIN-gate dispatch. Two error shapes from processRefundV2 land
