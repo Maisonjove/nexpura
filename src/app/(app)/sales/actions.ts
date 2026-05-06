@@ -336,6 +336,35 @@ export async function updateSaleStatus(
 
   const { supabase, userId, tenantId } = ctx;
 
+  // P0 guard (C-01 root cause, 2026-05-06): reject status='refunded'
+  // unless a refund row already exists for this sale. Pre-fix this
+  // function accepted any status string, so anyone with the
+  // create_invoices permission could fake-refund a sale by flipping
+  // the dropdown — no refund row, no money moved, no GL, no audit.
+  // Caught in prod on hello@nexpura sale b5b60d1a ($2,750, 2026-05-05).
+  // The canonical refund path is processRefund() / /api/pos/refund —
+  // they insert into refunds + refund_items, then flip the parent
+  // sale to status='refunded' as the LAST step (and only when fully
+  // refunded). So the only legitimate state in which the parent's
+  // status flips to 'refunded' is one where a refunds row already
+  // exists. Belt-and-suspenders: the UI dropdown also no longer
+  // offers 'refunded' as a selectable value (SaleDetailClient.tsx).
+  if (status === "refunded") {
+    const { data: existingRefund } = await supabase
+      .from("refunds")
+      .select("id")
+      .eq("original_sale_id", id)
+      .eq("tenant_id", tenantId)
+      .limit(1)
+      .maybeSingle();
+    if (!existingRefund?.id) {
+      return {
+        error:
+          "Cannot mark sale as refunded directly. Process a refund through the refunds module — the parent sale is flipped automatically when the refund completes.",
+      };
+    }
+  }
+
   const { error } = await supabase
     .from("sales")
     .update({ status, updated_at: new Date().toISOString() })

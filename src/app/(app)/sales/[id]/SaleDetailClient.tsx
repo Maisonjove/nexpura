@@ -53,13 +53,28 @@ interface Props {
   laybyPayments?: LaybyPayment[];
 }
 
-const STATUSES = ["quote", "confirmed", "paid", "completed", "refunded", "layby"];
+// P0 guard (audit C-01 root cause, 2026-05-06): "refunded" is NOT a
+// user-selectable status. Pre-fix the dropdown offered it, and the
+// server-side updateSaleStatus accepted any value, so anyone with
+// `create_invoices` could fake-refund any sale by clicking the
+// dropdown — no refund row, no money moved, no GL, no audit. Caught
+// in prod on hello@nexpura sale b5b60d1a (status flipped without a
+// refund row, $2,750). The canonical refund path is the refunds
+// module's processRefund() / /api/pos/refund — they create a refund
+// row and ONLY THEN flip the parent sale to status='refunded' (when
+// fully refunded). Server-side guard in src/app/(app)/sales/actions.ts
+// rejects an attempted flip to 'refunded' without a corresponding
+// refund row, mirroring the UI restriction here.
+const STATUSES = ["quote", "confirmed", "paid", "completed", "layby"];
 
 const STATUS_COLOURS: Record<string, string> = {
   quote: "bg-stone-100 text-stone-700",
   confirmed: "bg-stone-100 text-stone-700",
   paid: "bg-green-50 text-green-700",
   completed: "bg-stone-100 text-amber-700",
+  // 'refunded' kept in the colour map because the badge can still
+  // *display* refunded sales (set by the refund flow); user just
+  // can't pick this status from the dropdown above.
   refunded: "bg-red-50 text-red-600",
   layby: "bg-amber-50 text-amber-700",
 };
