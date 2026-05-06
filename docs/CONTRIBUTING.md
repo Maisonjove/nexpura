@@ -1340,3 +1340,149 @@ boolean return CAN be correct in scripts that don't have a dry-run
 mode at all. ESLint can't reliably distinguish. Manual checklist
 (above) + unit-test discipline are the gates. If this bug class
 recurs despite the checklist, revisit.
+
+---
+
+## 17. Reconciliation contract
+
+Aggregations rendered alongside lists must reconcile against the
+same scope window the list uses. Mismatches produce two compounding
+failures:
+
+1. **UX**: the user sees "Total: $2,750" with an empty list directly
+   below — they assume the page is broken.
+2. **Leak**: a location-restricted manager sees totals rolled up
+   from locations they cannot see in the list. The KPI strip
+   becomes a covert side-channel for cross-location data.
+
+This section pins the scope-parity contract for page-level KPIs
+(§17.1). The companion A1 contract for line-item financial views
+(`sale_items` as canonical source, GL invariants) lives on the
+`post-audit/a1-money-correctness` branch and merges in as §17.2.
+
+### 17.1 Widget-vs-list scope parity
+
+QA finding (Desktop-Opus retest, 2026-05-06): five page-level
+surfaces showed widget aggregations that disagreed with the list
+rendered directly below them. Root cause across /sales, /customers,
+/repairs: the LIST funneled through a scope helper
+(`locationScopeFilter` for sales/repairs,
+`get_visible_customer_ids` RPC for customers — both derived from
+`team_members.allowed_location_ids`), but the widget aggregation
+ran tenant-only.
+
+#### The rule
+
+Any widget that aggregates rows from a table backing a scoped list
+view MUST use the same scope helper as that list. No exceptions
+without an explicit comment naming the table + the missing column.
+
+The shared helpers:
+
+- `src/lib/location-read-scope.ts` — `resolveReadLocationScope` and
+  `locationScopeFilter`. The latter produces the `.or(...)`
+  expression that matches `location_id IN (allowed)` OR
+  `location_id IS NULL` (OR-NULL hygiene from C-02 fix).
+- `get_visible_customer_ids(p_user_id, p_tenant_id)` RPC — used by
+  the customer list because customer visibility is mediated through
+  `customer_location_visibility` and not the customer's own
+  `location_id` column.
+
+Pattern for a widget query that mirrors a scoped list:
+
+```ts
+const scopeOrFilter = userId
+  ? await locationScopeFilter(userId, tenantId)
+  : null;
+const applyScope = <T,>(q: T): T => {
+  if (!scopeOrFilter) return q;
+  return (q as unknown as { or: (s: string) => T }).or(scopeOrFilter);
+};
+
+const result = await applyScope(
+  admin
+    .from("sales")
+    .select("total")
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .gte("sale_date", startOfMonth)
+);
+```
+
+For the customer-visibility variant, use `applyVisibility(q)` that
+wraps `q.in("id", visibleIds)` with the `visibleIds.length === 0
+→ ["00000000-…"]` empty-scope fallthrough (mirrors
+`locationScopeFilter`'s impossible-UUID branch).
+
+#### Documented exceptions (tables with no scope column)
+
+These tables have no `location_id` and no equivalent visibility
+mediator, so their KPIs remain explicitly tenant-wide. Each
+callsite must contain a comment naming the table + this section.
+
+| Table | Why exempt | Mitigation |
+|-------|-----------|-----------|
+| `quotes` | No `location_id` column | Inline comment in `/sales/page.tsx`. Add column when multi-location quoting ships. |
+| `tasks` | No `location_id` column; visibility is `assigned_to`-based for non-managers | Page-level filter `.eq("assigned_to", userId)` for non-manager already enforces parity with the list. |
+| `enquiries` | No `location_id` column on this schema | Inline comment in `/customers/page.tsx`. |
+
+#### Owner-only platform-wide aggregations
+
+Some widgets legitimately aggregate ACROSS the user's scope (e.g.
+"Platform total revenue this month" only visible to the tenant
+owner). Those are fine, but the role gating MUST be explicit:
+
+```ts
+const isOwner = auth?.role === "owner";
+if (isOwner) {
+  // Aggregate tenant-wide; no scope helper.
+} else {
+  // Use locationScopeFilter / visibility helper.
+}
+```
+
+A widget that silently bypasses the scope helper because "the
+manager wants to see everything" without an explicit role check is
+a leak — the missing role gate means a location-restricted user
+hits the same code path.
+
+#### Callsites covered (2026-05-06 PR)
+
+- `src/app/(app)/sales/page.tsx` — `applyScope` over the 5 KPI
+  queries (todayResult, monthResult, invoicesResult, laybysResult).
+  `quotesResult` exempt per the table above.
+- `src/app/(app)/customers/page.tsx` — `CustomerKpis` resolves
+  `visibleIds` via the same RPC the list uses, and `applyVisibility`
+  wraps each KPI count query.
+- `src/app/(app)/repairs/page.tsx` — when `locationFilter` is
+  truthy the precomputed `tenant_dashboard_stats.repairs_*` read is
+  skipped (returns `{data: null}`). The client falls back to local
+  counts over the 200-row scoped slice.
+- `src/app/(app)/inventory/page.tsx` — pre-existing parity. Both
+  `itemsQuery` and `countQuery` apply `locationFilter` in the same
+  conditional block. Pinned by the contract test so a future edit
+  can't update one branch without the other.
+- `src/app/(app)/tasks/page.tsx` — already scope-parity by
+  construction (`assigned_to` filter for non-managers covers both
+  KPI and list paths; pinned by contract test).
+
+#### Contract test
+
+`src/lib/__tests__/widget-list-scope-parity-contract.test.ts`
+source-greps each page for the helper imports + scope callsites.
+Source-grep is intentionally rigid: refactors that move the
+queries elsewhere (e.g. into a shared aggregator) MUST update
+this test AND the §17.1 callsite list together. The test enforces
+that lockstep so doc drift can't accumulate silently.
+
+#### Cross-references
+
+- `src/lib/locations.ts` — `getUserLocationIds` (the team_members
+  resolver with the C-02 owner/manager fallback).
+- `src/lib/location-read-scope.ts` — `resolveReadLocationScope` +
+  `locationScopeFilter`.
+- C-02 audit fix (PR #162) — origin of the OR-NULL hygiene model
+  this contract extends to widgets.
+- §13 — Half-fix-pair pattern: a fix that updates the list query
+  but leaves the widget query stale is an instance of this
+  pattern. §17.1 is its preventative.
